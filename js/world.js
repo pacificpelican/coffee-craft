@@ -369,7 +369,7 @@ export function buildWorld(scene, defList) {
       const lion = box(1.4, 1.2, 1.6, '#c9a45a', s * 7.5, 1.2, 2); g.add(lion);
     }
     g.add(box(17.6, 1.2, 1.8, '#b8532a', 0, 8.2, 0));
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.2), new THREE.MeshBasicMaterial({ map: canvasTex(256, 56, (c, w, h) => { c.fillStyle = '#2f5a3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#e3b93c'; c.lineWidth = 3; c.strokeRect(3, 3, w - 6, h - 6); c.fillStyle = '#e3b93c'; c.font = 'bold 30px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('唐人街 · CHINATOWN', w / 2, h / 2 + 2); }, THREE), side: THREE.DoubleSide }));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.2), new THREE.MeshBasicMaterial({ map: canvasTex(256, 56, (c, w, h) => { c.fillStyle = '#2f5a3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#e3b93c'; c.lineWidth = 3; c.strokeRect(3, 3, w - 6, h - 6); c.fillStyle = '#e3b93c'; let fs = 30; c.font = `bold ${fs}px serif`; while (c.measureText('唐人街 · CHINATOWN').width > w - 24 && fs > 12) { fs -= 1; c.font = `bold ${fs}px serif`; } c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('唐人街 · CHINATOWN', w / 2, h / 2 + 2); }, THREE), side: THREE.DoubleSide }));
     sign.position.set(0, 9.6, 0); g.add(sign);
     for (let k = 0; k < 3; k++) {
       const tier = box(20 - k * 4, 0.5, 3 - k * 0.4, '#4f6b3a', 0, 10.5 + k * 0.7 + 0.5, 0); g.add(tier);
