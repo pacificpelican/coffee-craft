@@ -28,6 +28,8 @@ Open <http://localhost:8000>. Without PHP (any static server) the game still pla
 
 The ⏸ button opens the pause menu (Settings, screenshot, mute); 📱 opens the phone.
 
+Camera: `Q`/`E` or right-mouse-button drag rotate, mouse wheel zooms; on touch, twist with two fingers to rotate and pinch to zoom. Movement is camera-relative.
+
 ## Configuration
 
 Edit `config.php` for defaults, or copy `config.local.php.example` to `config.local.php` (git-ignored) for

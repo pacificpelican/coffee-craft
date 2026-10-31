@@ -33,7 +33,7 @@ export function createPhone(G) {
       ({ settings, menus, irl: irlApp, news, chat, music, store })[app](screen);
     }
     root.replaceChildren(
-      h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy')),
+      h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );

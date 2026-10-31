@@ -86,7 +86,7 @@ async function boot() {
   phone = createPhone(G);
   env.onWeather = (w) => { state.weather = w; if (w === 'rain') { setTrance(true, 120); notify('It starts to rain.', { sound: false }); } };
   clock = new THREE.Clock();
-  wireInput(); wireUI();
+  wireInput(); wireCamera(); wireUI();
   const saved = localStorage.getItem(SAVE_KEY);
   if (saved) $('#continue').classList.remove('hidden');
   $('#intro-status').textContent = server.available ? `Server: ${server.storage}${server.ai ? ' · AI: ' + server.aiProvider : ' · AI off'}` : 'Static mode (no PHP): saves stay in this browser.';
@@ -150,11 +150,33 @@ function wireInput() {
   // clicking billboards
   const ray = new THREE.Raycaster();
   $('#game').addEventListener('pointerdown', (e) => {
-    if (paused) return;
+    if (paused || e.button !== 0) return;
     ray.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), camera);
     const hit = ray.intersectObjects(world.clickables.map((c) => c.mesh), false)[0];
     if (hit) { const c = world.clickables.find((c) => c.mesh === hit.object); if (c) window.open(c.url, '_blank', 'noopener'); }
   });
+}
+// Orbit camera: yaw (radians) and zoom multiplier; walking input is rotated to be camera-relative.
+const cam = { yaw: 0, zoom: 1, zoomT: 1 };
+const setZoom = (z) => { cam.zoomT = clamp(z, 0.55, 1.8); };
+function wireCamera() {
+  const el = $('#game'); const pts = new Map();
+  el.addEventListener('wheel', (e) => { if (paused) return; e.preventDefault(); setZoom(cam.zoomT * (e.deltaY > 0 ? 1.1 : 0.9)); }, { passive: false });
+  const two = () => { const [a, b] = [...pts.values()]; return { ang: Math.atan2(b.y - a.y, b.x - a.x), dist: Math.hypot(b.x - a.x, b.y - a.y) }; };
+  let last = null, drag = null;
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+  el.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button === 2) { drag = e.clientX; el.setPointerCapture(e.pointerId); return; }
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); last = pts.size === 2 ? two() : null;
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (drag !== null) { if (!paused) cam.yaw -= (e.clientX - drag) * 0.008; drag = e.clientX; return; }
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size !== 2 || paused) return;
+    const n = two(); if (last) { cam.yaw -= angDiff(0, n.ang - last.ang); if (last.dist > 10) setZoom(cam.zoomT * last.dist / n.dist); } last = n;
+  });
+  const up = (e) => { pts.delete(e.pointerId); last = null; if (e.button === 2) drag = null; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
 function readMove() {
   let x = 0, z = 0;
@@ -477,7 +499,8 @@ function movePlayer(dt) {
     s.x = player.x; s.z = player.z; s.h = player.heading; s.mesh.position.set(s.x, player.y, s.z); s.mesh.rotation.y = s.h; player.speed = Math.abs(s.v) * 0.2;
   } else if (!player.sitting) {
     const spd = (wob ? 2.6 : 4) * (player.eating > 0 ? 0.3 : 1);
-    let ax = mv.x, az = mv.z; if (wob) { ax += Math.sin(t * 2.3) * 0.35; az += Math.cos(t * 1.7) * 0.35; }
+    const yc = Math.cos(cam.yaw), ys = Math.sin(cam.yaw);
+    let ax = mv.x * yc + mv.z * ys, az = -mv.x * ys + mv.z * yc; if (wob) { ax += Math.sin(t * 2.3) * 0.35; az += Math.cos(t * 1.7) * 0.35; }
     const m = Math.hypot(ax, az); player.speed = m > 0.1 ? spd : 0;
     if (m > 0.1) {
       let nx = player.x + (ax / Math.max(1, m)) * spd * dt, nz = player.z + (az / Math.max(1, m)) * spd * dt;
@@ -490,8 +513,12 @@ function movePlayer(dt) {
   playerMesh.position.set(player.x, player.y + (player.scooter ? 0.35 : 0), player.z); playerMesh.rotation.y = player.heading;
   playerMesh.rotation.x = player.eating > 0 ? Math.sin(t * 8) * 0.06 : 0;
   animateHuman(playerMesh, player.scooter || player.ride ? 0 : player.speed, t, !!player.sitting || !!player.scooter || player.ride === 'tram');
-  const cx = player.x + (shake ? shake : 0), cy = player.y + 17, cz = player.z + 17;
-  camera.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 6)); camera.lookAt(player.x, player.y + 1.2, player.z - 1);
+  const spin = (keys.has('e') ? 1 : 0) - (keys.has('q') ? 1 : 0);
+  if (spin) cam.yaw += spin * dt * 1.8;
+  cam.zoom += (cam.zoomT - cam.zoom) * Math.min(1, dt * 8);
+  const sy = Math.sin(cam.yaw), cyw = Math.cos(cam.yaw);
+  const cx = player.x + sy * 17 * cam.zoom + (shake ? shake : 0), cy = player.y + 17 * cam.zoom, cz = player.z + cyw * 17 * cam.zoom;
+  camera.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 6)); camera.lookAt(player.x - sy, player.y + 1.2, player.z - cyw);
   cutaway(dt);
 }
 
