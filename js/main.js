@@ -44,7 +44,7 @@ const G = {
   menuFor: (b) => (b.generic ? b.newMenu : defOf(b.id)?.menu) || [],
   snapshot: () => ({ state, player: { x: player.x, z: player.z } }),
   aiText,
-  restore: (sv) => { Object.assign(state, sv.state); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
+  restore: (sv) => { Object.assign(state, sv.state); if (state.musicChannel) setChannel(state.musicChannel); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
   npcReply: (name, text) => npcReply({ persona: { name, occupation: 'friend', quirk: '', mood: 'friendly' } }, [{ role: 'user', content: text }], 'chat'),
 };
@@ -116,7 +116,7 @@ function saveLocal() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, player: { x: player.x, z: player.z } })); } catch { /* quota */ }
   if (server.user) account.saveGame(G.snapshot()).catch(() => { /* offline: local save still exists */ });
 }
-function loadLocal() { try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY)); if (sv) { Object.assign(state, sv.state); player.x = sv.player.x; player.z = sv.player.z; return true; } } catch { /* ignore */ } return false; }
+function loadLocal() { try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY)); if (sv) { Object.assign(state, sv.state); if (state.musicChannel) setChannel(state.musicChannel); player.x = sv.player.x; player.z = sv.player.z; return true; } } catch { /* ignore */ } return false; }
 
 // ----------------------------------------------------------- input
 function press(k) { input.edge[k] = true; }
