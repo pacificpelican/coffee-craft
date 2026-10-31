@@ -91,11 +91,11 @@ export function createPhone(G) {
     if (!d.length) return el.append(h('p', {}, 'Nothing here yet. Order something at a café, restaurant or pub!'));
     const g = h('div', { class: 'diary' });
     for (const f of d) g.append(h('div', { class: 'bizcard' }, h('img', { src: svgURI(foodSVG(f.kind)), alt: f.name }), h('b', {}, f.name), h('div', { class: 'small' }, f.where + ' · day ' + f.day)));
-    el.append(g);
-  }
+    el.append(g, h('button', { class: 'btn alt', title: 'Print or save your food diary as PDF', onclick: () => G.printSheet('food_diary', `Food diary — ${d.length} item${d.length === 1 ? '' : 's'} tried`, [h('div', { style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px' }, ...d.map((f) => h('div', { style: 'text-align:center;break-inside:avoid' }, h('img', { src: svgURI(foodSVG(f.kind)), alt: f.name, style: 'width:100%;max-width:150px' }), h('div', {}, h('b', {}, f.name)), h('div', { style: 'font-size:12px' }, `${f.where} · day ${f.day}`))))]) }, '🖨 Print / PDF'));
+      }
 
-  // ------------------------------------------------------------ Bank
-  function tBank(el) {
+      // ------------------------------------------------------------ Bank
+      function tBank(el) {
     const s = S();
     el.append(h('div', { class: 'tabs' }, ...['Overview', 'Decisions', 'Suppliers'].map((t) => h('button', { class: t === bankTab ? 'on' : '', onclick: () => { bankTab = t; render(); } }, t + (t === 'Decisions' ? ` (${s.bank.decisions.length})` : '')))));
     const auto = h('input', { type: 'checkbox', checked: s.bank.auto, onchange: (e) => { s.bank.auto = e.target.checked; if (s.bank.auto) G.autoPending(); G.notify(s.bank.auto ? 'Bank automation ON' : 'Manual banking'); render(); } });
@@ -258,13 +258,14 @@ export function createPhone(G) {
     const blockBtn = (c) => h('button', { class: 'btn warn', title: 'Block: no new messages at all', onclick: (e) => { e.stopPropagation(); setPref(c, prefs[c] === 'blocked' ? null : 'blocked'); } }, prefs[c] === 'blocked' ? '✅ Unblock' : '🚫 Block');
     if (chatWith && s.contacts.includes(chatWith)) {
       const msgs = s.chats[chatWith] || [], blocked = prefs[chatWith] === 'blocked';
-      el.append(h('h3', {}, chatWith, prefs[chatWith] ? h('span', { class: 'small' }, prefs[chatWith] === 'muted' ? ' · muted' : ' · blocked') : ''), h('div', { class: 'row' }, muteBtn(chatWith), blockBtn(chatWith)), ...msgs.map((m) => h('div', { class: 'say' + (m.me ? ' me' : '') }, m.text)));
+      el.append(h('h3', {}, chatWith, prefs[chatWith] ? h('span', { class: 'small' }, prefs[chatWith] === 'muted' ? ' · muted' : ' · blocked') : ''), h('div', { class: 'row' }, muteBtn(chatWith), blockBtn(chatWith)), ...msgs.map((m) => h('div', { class: 'say' + (m.me ? ' me' : '') }, m.text, m.ai ? h('span', { class: 'small', title: 'Written by the AI', style: 'margin-left:6px;opacity:.7' }, '✨AI') : '')));
+      el.append(h('button', { class: 'btn alt', title: 'Print or save this conversation as PDF', onclick: () => G.printSheet('chat', `Text conversation with ${chatWith}`, msgs.map((m) => h('p', {}, h('b', {}, (m.me ? 'You' : chatWith) + ': '), m.text + (m.ai ? ' [AI]' : '')))) }, '🖨 Print / PDF'));
       if (blocked) return el.append(h('p', { class: 'small' }, 'Blocked: unblock to message again.'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
       const inp = h('input', { placeholder: 'message…', style: 'width:70%' });
       el.append(inp, h('button', { class: 'btn', onclick: async () => {
         if (!inp.value.trim()) return; (s.chats[chatWith] ||= []).push({ me: true, text: inp.value });
         const t = inp.value; inp.value = ''; render();
-        const reply = await G.npcReply(chatWith, t) ; (s.chats[chatWith] ||= []).push({ text: reply }); render();
+        const reply = await G.npcReply(chatWith, t); (s.chats[chatWith] ||= []).push(G.lastAi ? { text: reply, ai: true } : { text: reply }); render();
       } }, 'Send'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
       return;
     }

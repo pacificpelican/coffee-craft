@@ -46,7 +46,8 @@ const G = {
   aiText,
   restore: (sv) => { Object.assign(state, sv.state); if (state.musicChannel) setChannel(state.musicChannel); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
-  npcReply: (name, text) => npcReply({ persona: { name, occupation: 'friend', quirk: '', mood: 'friendly' } }, [{ role: 'user', content: text }], 'chat'),
+  npcReply: async (name, text) => { const n = { persona: { name, occupation: 'friend', quirk: '', mood: 'friendly' } }; const text2 = await npcReply(n, [{ role: 'user', content: text }], 'chat'); G.lastAi = !!n.aiReply; return text2; },
+  printSheet,
 };
 
 // ----------------------------------------------------------- modal helpers
@@ -328,7 +329,7 @@ function startDialogue(n) {
   sfx('click');
   openModal((card) => {
     const box = h('div'); const inp = h('input', { placeholder: 'Say something…', style: 'width:65%' });
-    const add = (who, text, ai) => { log.push({ who, text }); box.append(h('div', { class: 'say' + (who === 'You' ? ' me' : '') }, h('b', {}, who + ': '), text, ai ? h('span', { class: 'small', title: 'Written by the AI', style: 'margin-left:6px;opacity:.7' }, '✨AI') : '')); box.scrollTop = box.scrollHeight; };
+    const add = (who, text, ai) => { log.push({ who, text, ai: !!ai }); box.append(h('div', { class: 'say' + (who === 'You' ? ' me' : '') }, h('b', {}, who + ': '), text, ai ? h('span', { class: 'small', title: 'Written by the AI', style: 'margin-left:6px;opacity:.7' }, '✨AI') : '')); box.scrollTop = box.scrollHeight; };
     const send = async (text) => {
       if (!text) return; inp.value = ''; add('You', text); n.rel = (n.rel || 0) + 1;
       const r = await npcReply(n, log.map((l) => ({ role: l.who === 'You' ? 'user' : 'assistant', content: l.text })), 'street'); add(p.name, r, n.aiReply);
@@ -347,15 +348,19 @@ function offerNumbers(card, n, add) {
   const row = h('div', { class: 'say' }, `${n.persona.name} asks: “Want to exchange numbers?” `, h('button', { class: 'btn alt', onclick: () => { state.contacts.push(n.persona.name); (state.chats[n.persona.name] ||= []).push({ text: 'Good talking to you! ☕' }); row.textContent = 'Numbers exchanged! Check Chat on your phone.'; sfx('chime'); } }, '👍 Sure'), h('button', { class: 'btn', onclick: () => row.remove() }, '⛔ No thanks'));
   card.insertBefore(row, card.querySelector('input'));
 }
-function exportPdf(n, log) {
+function printSheet(kind, intro, nodes) {
   const sheet = $('#print-sheet'); const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   renderer.render(scene, camera);
   sheet.replaceChildren(h('div', { style: 'text-align:center' }, h('div', { html: LOGO_SVG, style: 'width:90px;margin:auto' }), h('h1', {}, 'Coffee Craft')),
-    h('p', {}, `Conversation with ${n.persona.name} (${n.persona.occupation}) — ${new Date().toLocaleString()} — Day ${state.day}, ${fmtClock(state.minutes)}, ${state.weather}.`),
+    h('p', {}, `${intro} — ${new Date().toLocaleString()} — Day ${state.day}, ${fmtClock(state.minutes)}, ${state.weather}.`),
     h('img', { src: renderer.domElement.toDataURL('image/jpeg', 0.7), style: 'width:100%;max-height:260px;object-fit:cover' }),
-    ...log.map((l) => h('p', {}, h('b', {}, l.who + ': '), l.text)), h('p', { style: 'margin-top:30px;font-size:12px' }, 'Coffee Craft by Daniel McKeown — https://altaredwood.work'));
-  const t = document.title; document.title = `Coffee_Craft__conversation_${stamp}`;
+    ...nodes, h('p', { style: 'margin-top:30px;font-size:12px' }, 'Coffee Craft by Daniel McKeown — https://altaredwood.work'));
+  const t = document.title; document.title = `Coffee_Craft__${kind}_${stamp}`;
   setTimeout(() => { window.print(); document.title = t; }, 100);
+}
+const aiMark = (ai) => (ai ? ' [AI]' : '');
+function exportPdf(n, log) {
+  printSheet('conversation', `Conversation with ${n.persona.name} (${n.persona.occupation})`, log.map((l) => h('p', {}, h('b', {}, l.who + ': '), l.text + aiMark(l.ai))));
 }
 
 // ----------------------------------------------------------- street dealers
@@ -502,9 +507,10 @@ async function contactMessage() {
   const pool = state.contacts.filter((c) => prefs[c] !== 'blocked');
   if (!pool.length) return;
   const name = pick(pool);
-  const text = server.ai ? (await npcReply({ persona: { name, occupation: 'friend', mood: 'friendly' } }, [{ role: 'user', content: 'Send a short friendly text message to the player about your day.' }], 'chat')) : pick(['Rain again! Coffee later?', 'Saw the streetcar get stuck behind a delivery truck 😂', 'Just heard a rumor about a new ramen place.']);
+  const fake = { persona: { name, occupation: 'friend', mood: 'friendly' } };
+  const text = server.ai ? (await npcReply(fake, [{ role: 'user', content: 'Send a short friendly text message to the player about your day.' }], 'chat')) : pick(['Rain again! Coffee later?', 'Saw the streetcar get stuck behind a delivery truck 😂', 'Just heard a rumor about a new ramen place.']);
   if ((state.chatPrefs || {})[name] === 'blocked') return;
-  (state.chats[name] ||= []).push({ text });
+  (state.chats[name] ||= []).push(fake.aiReply ? { text, ai: true } : { text });
   if ((state.chatPrefs || {})[name] === 'muted') return;
   notify(`💬 ${name}: ${text.slice(0, 60)}`, { kind: 'chat', onclick: () => phone.open('chat', { chat: name }) });
 }
