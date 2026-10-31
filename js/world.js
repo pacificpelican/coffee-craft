@@ -352,9 +352,9 @@ export function buildWorld(scene, defList) {
     solid(bx - 3.6, bx + 3.6, bz + 8.5, bz + 15.5);
     // platform + tracks behind
     const plat = box(60, 0.5, 8, '#6a6e6c', 0, 0.25, -8); g.add(plat);
-    for (const tz of [-18, -14]) { g.add(box(80, 0.15, 0.2, '#5a5a56', 0, 0.08, tz - 0.7)); g.add(box(80, 0.15, 0.2, '#5a5a56', 0, 0.08, tz + 0.7)); for (let t = -38; t < 40; t += 2) g.add(box(0.5, 0.1, 2.4, '#5a4a38', t, 0.04, tz)); }
+    for (const tz of [-18, -14]) { g.add(box(56, 0.15, 0.2, '#5a5a56', 0, 0.08, tz - 0.7)); g.add(box(56, 0.15, 0.2, '#5a5a56', 0, 0.08, tz + 0.7)); for (let t = -26; t < 28; t += 2) g.add(box(0.5, 0.1, 2.4, '#5a4a38', t, 0.04, tz)); }
     for (let k = 0; k < 4; k++) { const car = box(9, 3.6, 3, k === 0 ? '#d9772b' : '#6f8f4e', -22 + k * 9.6, 2.4, -14); g.add(car); g.add(box(8, 0.9, 3.04, '#2f3b40', -22 + k * 9.6, 3.1, -14)); }
-    solid(bx - 40, bx + 30, bz - 15.5, bz - 12.5, 4);
+    solid(bx - 27, bx + 22, bz - 15.5, bz - 12.5, 4);
     world.stationDoor = { type: 'door', bizId: 'station', x: bx, z: bz + 22.2, r: 3, label: 'Union Station' };
     world.doors.push(world.stationDoor);
     world.buildings.station = { id: 'station', def: { id: 'station', name: 'Union Station', type: 'station' }, x: bx, z: bz + 8, w: 46, d: 20, h: 12, door: { x: bx, z: bz + 22.2 } };
