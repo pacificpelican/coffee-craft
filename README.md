@@ -10,7 +10,7 @@ Everything works with **no AI and no database**: AI is an optional enhancement, 
 
 ## Run locally
 
-Requirements: PHP 8+ (only for accounts, saves and the AI proxy). The game itself is static ES modules.
+Requirements: PHP 8+ (only for accounts, saves and the AI proxy). Ollama on localhost needs nothing extra; cloud AI providers need HTTPS support in PHP (enable the `openssl` extension, and ideally `curl`, in `php.ini`). `mbstring` is optional. The game itself is static ES modules.
 
 ```
 php -S localhost:8000

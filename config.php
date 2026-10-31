@@ -25,7 +25,7 @@ return [
     // 'openai' also works with any OpenAI-compatible API (Groq, OpenRouter,
     // Together, LM Studio, ...) by changing base_url.
     'ai' => [
-        'provider' => 'none',
+        'provider' => 'ollama',
         'ollama' => [
             'base_url' => 'http://127.0.0.1:11434',
             'model' => 'llama3.2',

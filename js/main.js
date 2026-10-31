@@ -43,6 +43,7 @@ const G = {
   price: (b, base) => Math.round(base * tierMult(b)),
   menuFor: (b) => (b.generic ? b.newMenu : defOf(b.id)?.menu) || [],
   snapshot: () => ({ state, player: { x: player.x, z: player.z } }),
+  aiText,
   restore: (sv) => { Object.assign(state, sv.state); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
   npcReply: (name, text) => npcReply({ persona: { name, occupation: 'friend', quirk: '', mood: 'friendly' } }, [{ role: 'user', content: text }], 'chat'),
@@ -91,7 +92,7 @@ async function boot() {
   if (saved) $('#continue').classList.remove('hidden');
   $('#intro-status').textContent = server.available ? `Server: ${server.storage}${server.ai ? ' · AI: ' + server.aiProvider : ' · AI off'}` : 'Static mode (no PHP): saves stay in this browser.';
   renderer.setAnimationLoop(frame);
-  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G, tram: tramSys.tram };
+  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G, tram: tramSys.tram, npcSys };
 }
 
 function wireEconomy() {
@@ -313,6 +314,7 @@ async function npcReply(n, msgs, ctx = 'street') {
   if (n.isAnimal) return n.kind === 'raccoon' ? '*chitters, clutching a pizza crust*' : n.kind === 'dog' ? '*wags enthusiastically*' : '*coos and eyes your pockets*';
   const sys = `You are ${p.name}, ${p.occupation}, in a game set in a rainy, gritty Pacific Northwest international district. Personality: ${p.quirk || p.bio || 'friendly'}. Mood: ${p.mood}. ${n.persona.bio ? 'Bio: ' + n.persona.bio : ''} Weather: ${state.weather}. Reply in 1-2 short sentences, in character, no stage directions. The player runs coffee shops.`;
   const ai = await aiText(sys, msgs.slice(-8));
+  n.aiReply = !!ai;
   if (ai) return ai.replace(/\s+/g, ' ').slice(0, 300);
   if (p.name === 'Dan') return pick(['Pickle says hi. Well, he screams hi.', 'Green parrot, big opinions. You get used to it.']);
   if (p.name === 'Jes') return pick(['Bluebell loves pink. So do I, obviously.', 'Isn’t the light nice through all this cloud?']);
@@ -325,10 +327,10 @@ function startDialogue(n) {
   sfx('click');
   openModal((card) => {
     const box = h('div'); const inp = h('input', { placeholder: 'Say something…', style: 'width:65%' });
-    const add = (who, text) => { log.push({ who, text }); box.append(h('div', { class: 'say' + (who === 'You' ? ' me' : '') }, h('b', {}, who + ': '), text)); box.scrollTop = box.scrollHeight; };
+    const add = (who, text, ai) => { log.push({ who, text }); box.append(h('div', { class: 'say' + (who === 'You' ? ' me' : '') }, h('b', {}, who + ': '), text, ai ? h('span', { class: 'small', title: 'Written by the AI', style: 'margin-left:6px;opacity:.7' }, '✨AI') : '')); box.scrollTop = box.scrollHeight; };
     const send = async (text) => {
       if (!text) return; inp.value = ''; add('You', text); n.rel = (n.rel || 0) + 1;
-      const r = await npcReply(n, log.map((l) => ({ role: l.who === 'You' ? 'user' : 'assistant', content: l.text })), 'street'); add(p.name, r);
+      const r = await npcReply(n, log.map((l) => ({ role: l.who === 'You' ? 'user' : 'assistant', content: l.text })), 'street'); add(p.name, r, n.aiReply);
       if (!n.isAnimal && n.kind !== 'dealer' && n.rel >= 3 && !n.offered && !state.contacts.includes(p.name) && Math.random() < 0.6) { n.offered = true; offerNumbers(card, n, add); }
     };
     card.append(h('h3', {}, `${n.isAnimal ? '' : '💬 '}${p.name}`), h('div', { class: 'small' }, `${p.occupation}${p.mood ? ' · ' + p.mood : ''}`), box, inp,
@@ -336,7 +338,7 @@ function startDialogue(n) {
         h('button', { class: 'btn', title: 'Export PDF', onclick: () => exportPdf(n, log) }, '🖨'), h('button', { class: 'btn warn', onclick: closeModal }, 'Walk away')));
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(inp.value); e.stopPropagation(); });
     if (n.kind === 'dealer') card.append(dealerMenu());
-    npcReply(n, [{ role: 'user', content: 'Hello!' }]).then((r) => add(p.name, r));
+    npcReply(n, [{ role: 'user', content: 'Hello!' }]).then((r) => add(p.name, r, n.aiReply));
   }, () => { n.state = 'walk'; });
   if (!n.isAnimal) { n.state = 'chat'; n.chatT = 999; }
 }

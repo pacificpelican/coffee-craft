@@ -165,6 +165,11 @@ function rate_limited(array $cfg): bool {
     return false;
 }
 
+function clip(string $s, int $n): string {
+    if (function_exists('mb_substr')) return mb_substr($s, 0, $n);
+    return preg_match('/^.{0,' . $n . '}/us', $s, $m) ? $m[0] : substr($s, 0, $n);
+}
+
 function body(): array {
     $raw = file_get_contents('php://input');
     if (strlen($raw) > 2_000_000) out(['error' => 'too large'], 413);
@@ -259,11 +264,11 @@ switch ($action) {
         if (ai_provider($cfg) === 'none') out(['error' => 'AI not configured'], 503);
         if (rate_limited($cfg)) out(['error' => 'Slow down a little.'], 429);
         $b = body();
-        $system = mb_substr((string)($b['system'] ?? ''), 0, 4000);
+        $system = clip((string)($b['system'] ?? ''), 4000);
         $msgs = [];
         foreach (array_slice((array)($b['messages'] ?? []), -12) as $m) {
             $role = ($m['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
-            $msgs[] = ['role' => $role, 'content' => mb_substr((string)($m['content'] ?? ''), 0, 4000)];
+            $msgs[] = ['role' => $role, 'content' => clip((string)($m['content'] ?? ''), 4000)];
         }
         if (!$msgs) out(['error' => 'no messages'], 400);
         try {
