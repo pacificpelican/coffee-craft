@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" alt="Coffee Craft logo" width="140"></p>
+
 # Coffee Craft — *a game of bags and strategy*
 
 A casual, third-person, low-poly open-world web game about running fine coffee shops and restaurants in a damp,

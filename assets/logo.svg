@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<rect width="200" height="200" rx="28" fill="#e3b93c"/>
+<path d="M0 150 Q100 120 200 150 V200 H0Z" fill="#6f8f4e" opacity=".55"/>
+<path d="M40 62h100v62a40 40 0 0 1-40 40h-20a40 40 0 0 1-40-40z" fill="#2b2f2a"/>
+<path d="M140 78h14a22 22 0 0 1 0 44h-14v-10h14a12 12 0 0 0 0-24h-14z" fill="#2b2f2a"/>
+<g fill="#e3b93c">
+<rect x="52" y="112" width="10" height="44"/><rect x="64" y="96" width="14" height="60"/>
+<polygon points="80,156 80,82 90,70 100,82 100,156"/><rect x="102" y="104" width="10" height="52"/>
+<rect x="114" y="90" width="12" height="66"/><rect x="128" y="118" width="8" height="38"/>
+</g>
+<rect x="88" y="52" width="3" height="18" fill="#2b2f2a"/>
+<path d="M62 46q-6-10 0-18M100 44q-6-12 0-22M138 46q-6-10 0-18" stroke="#fffbea" stroke-width="5" fill="none" stroke-linecap="round" opacity=".85"/>
+<rect x="58" y="136" width="44" height="14" rx="3" fill="#d9772b"/><circle cx="68" cy="152" r="4" fill="#2b2f2a"/><circle cx="92" cy="152" r="4" fill="#2b2f2a"/>
+</svg>
