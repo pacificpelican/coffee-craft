@@ -21,7 +21,9 @@ export function playPickleball(card, g, done) {
   }
   function serve(dir) { ball = { x: W / 2, y: H / 2, vx: rand(-2, 2), vy: 3.2 * dir }; }
   function loop(now) {
-    if (!run) return; const dt = Math.min(2, (now - last) / 16.7); last = now;
+    if (!run) return;
+    if (!cv.isConnected || cv.offsetParent === null) { run = false; removeEventListener('keydown', kd); removeEventListener('keyup', ku); return; }
+    const dt = Math.min(2, (now - last) / 16.7); last = now;
     if (keys.ArrowLeft || keys.a) me -= 5 * dt; if (keys.ArrowRight || keys.d) me += 5 * dt; me = clamp(me, 30, W - 30);
     ai += clamp(ball.x - ai, -2.6 * dt, 2.6 * dt);
     ball.x += ball.vx * dt; ball.y += ball.vy * dt;

@@ -5,10 +5,11 @@ import { server, account, aiText, aiJson } from './api.js';
 import * as eco from './economy.js';
 import { LOGO_SVG, foodSVG, svgURI } from './art.js';
 import { getChannel, setChannel, sfx } from './audio.js';
+import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'TOWS', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -30,13 +31,19 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );
+  }
+
+  function pickle(el) {
+    const card = h('div', { class: 'pickle-app' });
+    el.append(card);
+    playPickleball(card, { state: S(), notify: G.notify, sfx, aiText, server }, () => { app = null; render(); });
   }
 
   // ------------------------------------------------------------ Settings
