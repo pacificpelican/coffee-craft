@@ -270,8 +270,8 @@ export function buildWorld(scene, defList) {
     }
     world.ramps = [{ x0: bx + 14, x1: bx + 18, z0: bz - 3, z1: bz + 5 }, { x0: bx - 22, x1: bx - 18, z0: bz - 3, z1: bz + 5 }];
     // upper level furniture
-    for (let k = 0; k < 5; k++) tree(bx - 22 + k * 11, TERRACE_Y + 0.0, 1.1), null;
-    // tree() placed with y=0.2; lift terrace trees
+    for (let k = 0; k < 5; k++) tree(bx - 22 + k * 11, bz - 18, 1.1);
+    // tree() places at y=0.2; lift terrace trees onto the terrace
     scene.children.slice(-5).forEach((t) => { t.position.y = TERRACE_Y; });
     for (let k = 0; k < 3; k++) bench(bx - 14 + k * 14, TERRACE_Y, bz - 21, 0);
     for (let k = 0; k < 4; k++) picnic(bx - 16 + k * 10, TERRACE_Y, bz - 12);
@@ -391,8 +391,11 @@ export function buildWorld(scene, defList) {
       world.clickables.push({ mesh: bb, url: 'https://sf3am.com' });
     }
     // street-level poster near the start
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), new THREE.MeshBasicMaterial({ map: canvasTex(96, 128, (c, w, h) => { c.fillStyle = '#1f2a2a'; c.fillRect(0, 0, w, h); c.fillStyle = '#e3b93c'; c.font = 'bold 26px Georgia'; c.textAlign = 'center'; c.fillText('SF3AM', w / 2, 40); c.fillStyle = '#e9e0c8'; c.font = '11px Georgia'; c.fillText('the game', w / 2, 58); c.fillText('winter 2027', w / 2, 76); c.fillStyle = '#d9772b'; c.fillText('sf3am.com', w / 2, 108); }, THREE), side: THREE.DoubleSide }));
-    p.position.set(C[1] + 1, 2.3, C[2] - 24.6); p.rotation.y = Math.PI; add(p); world.clickables.push({ mesh: p, url: 'https://sf3am.com' });
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.2), new THREE.MeshBasicMaterial({ map: canvasTex(96, 128, (c, w, h) => { c.fillStyle = '#1f2a2a'; c.fillRect(0, 0, w, h); c.fillStyle = '#e3b93c'; c.font = 'bold 26px Georgia'; c.textAlign = 'center'; c.fillText('SF3AM', w / 2, 40); c.fillStyle = '#e9e0c8'; c.font = '11px Georgia'; c.fillText('the game', w / 2, 58); c.fillText('winter 2027', w / 2, 76); c.fillStyle = '#d9772b'; c.fillText('sf3am.com', w / 2, 108); }, THREE), side: THREE.DoubleSide }));
+    p.position.set(C[1] + 1, 3.2, C[2] - 25.4); p.rotation.y = Math.PI; add(p); world.clickables.push({ mesh: p, url: 'https://sf3am.com' });
+    add(box(3.5, 4.6, 0.12, '#2b2f2a', C[1] + 1, 3.2, C[2] - 25.3));
+    const p2 = p.clone(); p2.position.set(C[1] + 1, 3.2, C[2] - 25.2); p2.rotation.y = 0; p2.scale.x = -1; add(p2); world.clickables.push({ mesh: p2, url: 'https://sf3am.com' });
+    for (const s of [-1, 1]) add(box(0.2, 3.4, 0.2, '#5a3a22', C[1] + 1 + s * 1.5, 1.7, C[2] - 25.4));
     world.interactables.push({ type: 'poster', x: C[1] + 1, z: C[2] - 26, r: 2.8, label: 'SF3AM poster', url: 'https://sf3am.com' });
     // Alta Redwood Pictures bridge banner
     const sm = new THREE.MeshBasicMaterial({ map: canvasTex(256, 72, (c, w, h) => { c.fillStyle = '#2b2f2a'; c.fillRect(0, 0, w, h); const im = new Image(); c.fillStyle = '#e9e0c8'; let fs = 26; c.font = `bold ${fs}px Georgia`; while (c.measureText('Alta Redwood Pictures').width > w - 62 && fs > 10) { fs -= 1; c.font = `bold ${fs}px Georgia`; } c.textAlign = 'center'; c.fillText('Alta Redwood Pictures', 50 + (w - 56) / 2, 44); c.strokeStyle = '#e9e0c8'; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 36); c.lineTo(8, 20); c.moveTo(24, 36); c.lineTo(40, 20); c.moveTo(24, 36); c.lineTo(40, 52); c.moveTo(24, 36); c.lineTo(8, 52); c.stroke(); }, THREE) });
