@@ -111,7 +111,10 @@ async function aiNews() {
 }
 
 // ----------------------------------------------------------- save / load
-function saveLocal() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, player: { x: player.x, z: player.z } })); } catch { /* quota */ } }
+function saveLocal() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, player: { x: player.x, z: player.z } })); } catch { /* quota */ }
+  if (server.user) account.saveGame(G.snapshot()).catch(() => { /* offline: local save still exists */ });
+}
 function loadLocal() { try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY)); if (sv) { Object.assign(state, sv.state); player.x = sv.player.x; player.z = sv.player.z; return true; } } catch { /* ignore */ } return false; }
 
 // ----------------------------------------------------------- input

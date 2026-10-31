@@ -30,6 +30,11 @@ The ⏸ button opens the pause menu (Settings, screenshot, mute); 📱 opens the
 
 Camera: `Q`/`E` or right-mouse-button drag rotate, mouse wheel zooms; on touch, twist with two fingers to rotate and pinch to zoom. Movement is camera-relative.
 
+## Saving
+
+The game autosaves to the browser (localStorage) every 45 seconds and each game day; **Continue** on the intro screen loads it.
+When logged in to an account, the same autosave is also sent to the server, and Settings → Account has **Save to server** / **Load from server** buttons (logging in also offers to load your server save).
+
 ## Configuration
 
 Edit `config.php` for defaults, or copy `config.local.php.example` to `config.local.php` (git-ignored) for

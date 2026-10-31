@@ -52,7 +52,9 @@ export function createPhone(G) {
     if (!server.available) el.append(h('p', { class: 'small' }, 'Server (PHP) not detected: accounts need api.php. Your game is saved in this browser instead.'));
     if (u) {
       el.append(h('p', {}, 'Logged in as ', h('b', {}, u)), h('button', { class: 'btn', onclick: async () => { await account.logout(); render(); } }, 'Log out'),
-        h('button', { class: 'btn', onclick: async () => { try { await account.saveGame(G.snapshot()); G.notify('Saved to server.'); } catch (e) { G.notify('Save failed: ' + e.message); } } }, 'Save to server'));
+        h('button', { class: 'btn', onclick: async () => { try { await account.saveGame(G.snapshot()); G.notify('Saved to server.'); } catch (e) { G.notify('Save failed: ' + e.message); } } }, 'Save to server'),
+        h('button', { class: 'btn', onclick: async () => { try { const sv = await account.loadSave(); if (!sv) return G.notify('No server save found yet.'); if (confirm('Replace your current game with the server save?')) { G.restore(sv); render(); } } catch (e) { G.notify('Load failed: ' + e.message); } } }, 'Load from server'),
+        h('p', { class: 'small' }, 'While logged in, your game is also saved to the server automatically every game day and every 45 seconds.'));
       const pw = h('input', { type: 'password', placeholder: 'password to confirm' });
       el.append(h('hr'), h('p', {}, '⚠ Deleting your account permanently erases it and all saved game data.'), pw,
         h('button', { class: 'btn warn', onclick: async () => { if (!confirm('Really delete your account and all data? This cannot be undone.')) return; try { await account.remove(pw.value); localStorage.removeItem('coffeecraft.save'); G.notify('Account deleted.'); render(); } catch (e) { alert(e.message); } } }, 'Delete account & data'));
