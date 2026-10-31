@@ -1,0 +1,14 @@
+<?php
+// Copy to config.local.php (git-ignored) and keep only what you override.
+return [
+    // 'storage' => 'mysql',
+    // 'mysql' => ['host' => '127.0.0.1', 'database' => 'coffee_craft', 'user' => 'coffee', 'password' => 'secret'],
+
+    // Local AI with Ollama:
+    // 'ai' => ['provider' => 'ollama', 'ollama' => ['model' => 'llama3.2']],
+
+    // Cloud AI:
+    // 'ai' => ['provider' => 'openai', 'openai' => ['api_key' => 'sk-...', 'model' => 'gpt-4o-mini']],
+    // 'ai' => ['provider' => 'anthropic', 'anthropic' => ['api_key' => 'sk-ant-...']],
+    // 'ai' => ['provider' => 'gemini', 'gemini' => ['api_key' => '...']],
+];

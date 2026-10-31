@@ -1,0 +1,156 @@
+{
+  "_comment": "Core game content. Drop extra JSON files in data/mods/ and list them in data/mods/index.json to add/override businesses, menus, npcs, etc. Arrays are concatenated; businesses with the same id are replaced.",
+  "palette": {
+    "green": "#6f8f4e", "moss": "#4f6b3a", "yellow": "#e3b93c", "mustard": "#c99a2e",
+    "gray": "#8a8f8c", "slate": "#5d6a70", "brown": "#7a5a3c", "blue": "#4f7a96",
+    "orange": "#d9772b", "red": "#b8432f", "cream": "#e9e0c8", "ink": "#2b2f2a"
+  },
+  "businesses": [
+    {"id":"library","name":"Kusa Public Library","type":"library","block":[0,0],"slot":"N0","color":"#8a7a5a","public":true},
+    {"id":"dunmore","name":"Dunmore Apartments","type":"apartments","block":[0,0],"slot":"N1","color":"#6c7d72","floors":5},
+    {"id":"orpheum","name":"Old Orpheum","type":"derelict","block":[0,0],"slot":"S0","color":"#6a6458","floors":3},
+    {"id":"altaredwood","name":"Alta Redwood Pictures","type":"studio","block":[0,0],"slot":"S1","color":"#4f6b3a","floors":3},
+
+    {"id":"ichiban","name":"Ichiban Rainy Ramen","type":"restaurant","style":"ramen","block":[1,0],"slot":"N0","color":"#c9822e","quality":68,"base":34,
+      "menu":[["Rainy Day Tonkotsu",14,"ramen","Milky pork broth, soft egg, scallions, a little black garlic oil."],["Spicy Orange Miso",15,"ramen","Miso ramen with a chili-orange glow and corn."],["Gyoza Trio",8,"dumpling","Pan-fried, crisp-bottomed, with vinegar."]]},
+    {"id":"hanbit","name":"Hanbit Korean Donuts","type":"donut","style":"donut","block":[1,0],"slot":"N1","color":"#e3b93c","quality":72,"base":30,
+      "menu":[["Twisted Kkwabaegi",4,"donut","Chewy twisted donut rolled in cinnamon sugar."],["Red Bean Hotteok",5,"donut","Griddled sweet pancake with brown sugar and nuts."],["Hanbit Glazed Ring",3,"donut","Pillowy ring with honey glaze."]]},
+    {"id":"phocyclo","name":"Pho Cyclo","type":"restaurant","style":"pho","block":[1,0],"slot":"S0","color":"#6f8f4e","quality":78,"base":36,
+      "menu":[["Pho Tai (rare beef)",13,"pho","Star anise broth, thin beef, basil, lime, bean sprouts."],["Bun Cha Hanoi",14,"pho","Grilled pork, vermicelli, herbs, dipping sauce."],["Fresh Spring Rolls",7,"dumpling","Shrimp, mint, rice paper, peanut sauce."]]},
+    {"id":"pacrim","name":"Pacific Rim Drug","type":"drug","block":[1,0],"slot":"S1","color":"#4f7a96","quality":55,"base":30,
+      "items":[["Cough Drops",4],["Rain Poncho",9],["Vitamin C",8]]},
+
+    {"id":"bogey","name":"Hotel Bogey","type":"hotel","block":[2,0],"slot":"N0","color":"#7a5a3c","quality":65,"base":60,"floors":6},
+    {"id":"strikers","name":"Striker's Pub","type":"pub","block":[2,0],"slot":"N1","color":"#5d4a38","quality":60,"base":45,
+      "menu":[["Pale Ale Pint",7,"beer","Hoppy, citrusy, local."],["Pub Fries & Gravy",8,"fries","Late-night fries."]]},
+    {"id":"dotties","name":"Dottie's Diner","type":"restaurant","style":"diner","block":[2,0],"slot":"S0","color":"#e3b93c","quality":58,"base":38,
+      "menu":[["Bottomless Diner Coffee",3,"coffee","Thick white mug, never empty."],["Blueberry Pancakes",10,"pancakes","Short stack, butter, syrup."],["Patty Melt",12,"burger","Grilled rye, onions, cheddar."]]},
+    {"id":"luckymart","name":"Lucky Mart","type":"convenience","block":[2,0],"slot":"S1","color":"#6f8f4e","quality":50,"base":34,
+      "items":[["Canned Coffee",3],["Onigiri",3],["Umbrella",12]]},
+
+    {"id":"neoncircuit","name":"Neon Circuit Electronics","type":"electronics","block":[3,0],"slot":"N0","color":"#4f6b7a","quality":60,"base":50,
+      "items":[["Camera Drone",2400,"drone"],["Vintage Camera",900,"camera"],["Headphones",120]]},
+    {"id":"greenfern","name":"Green Fern Dispensary","type":"weed","block":[3,0],"slot":"N1","color":"#4f6b3a","quality":75,"base":40,
+      "items":[["Fern Reserve Pre-roll",25,"weed_good"],["Gummies",18,"weed_good"]]},
+    {"id":"apts3","name":"Eastgate Apartments","type":"apartments","block":[3,0],"slot":"S0","color":"#7c6f60","floors":6},
+    {"id":"barista9","name":"Barista-9000","type":"coffee","style":"robot","block":[3,0],"slot":"S1","color":"#8a8f8c","quality":62,"base":42,
+      "menu":[["Robo-Flat White",6,"latte","Perfectly measured, eerily symmetrical."],["Nitro Circuit Cold Brew",6,"coffee","Cold brew on nitro, served by an arm."],["Binary Biscotti",4,"pastry","Two shapes: zero and one."]]},
+
+    {"id":"mossmug","name":"Moss & Mug Coffeehouse","type":"coffee","style":"indie","block":[0,1],"slot":"N0","color":"#6f8f4e","quality":72,"base":48,"owner":"player",
+      "menu":[["Mossy Oat Latte",6,"latte","Leaf pattern in the foam, oat milk, house espresso."],["Comfy Couch Drip",4,"coffee","Single-origin pour-over, a mug you can hold with both hands."],["Marmalade Scone",4,"pastry","Orange marmalade, still warm."]]},
+    {"id":"lab","name":"The Roast Lab","type":"lab","block":[0,1],"slot":"N1","color":"#5d6a70","public":true},
+    {"id":"cyclo","name":"Little Cyclo Drip Stand","type":"coffee","style":"vietnamese","block":[0,1],"slot":"S0","color":"#d9772b","quality":70,"base":40,"owner":"player",
+      "menu":[["Ca Phe Sua Da",5,"vncoffee","Slow phin drip over sweet condensed milk and ice."],["Egg Coffee",6,"vncoffee","Whipped yolk cream floating on dark coffee."],["Banh Mi Pate",7,"burger","Crisp baguette, pickles, cilantro."]]},
+    {"id":"apts4","name":"Lantern Court","type":"apartments","block":[0,1],"slot":"S1","color":"#8a7a5a","floors":5},
+
+    {"id":"midnight","name":"Midnight Tonkotsu","type":"restaurant","style":"ramen","block":[1,1],"slot":"N0","color":"#5d6a70","quality":74,"base":34,
+      "menu":[["Midnight Black Garlic Ramen",15,"ramen","Open until the last pub empties."],["Karaage Box",9,"dumpling","Crisp fried chicken with lemon."]]},
+    {"id":"seoulsugar","name":"Seoul Sugar Donuts","type":"donut","style":"donut","block":[1,1],"slot":"N1","color":"#d9772b","quality":66,"base":30,
+      "menu":[["Pandoro Cream Donut",4,"donut","Custard-stuffed, dusted with powdered sugar."],["Matcha Twist",5,"donut","Green tea glaze."]]},
+    {"id":"dragonfly","name":"Dim Sum Dragonfly","type":"restaurant","style":"dimsum","block":[1,1],"slot":"S0","color":"#4f7a96","quality":76,"base":38,
+      "menu":[["Har Gow Steamer",8,"dumpling","Translucent shrimp dumplings."],["Siu Mai Steamer",8,"dumpling","Pork and mushroom."],["Egg Tarts",5,"pastry","Flaky shell, wobbly custard."]]},
+    {"id":"koikin","name":"Koi & Kin Aquatics","type":"pets","block":[1,1],"slot":"S1","color":"#3f7a8a","quality":70,"base":30,
+      "items":[["Betta Fish",18],["Neon Tetras (6)",12],["Tiny Goldfish Bowl",15]]},
+
+    {"id":"nwroast","name":"Northwest Roast Co.","type":"coffee","style":"corporate","block":[2,1],"slot":"N0","color":"#4f6b3a","quality":55,"base":55,
+      "menu":[["Grande Pike Drip",4,"coffee","Consistent. Same in every city."],["Caramel Cloud Frappe",7,"latte","Whipped, drizzled, branded."],["Breakfast Sandwich",6,"burger","Egg, cheddar, English muffin."]]},
+    {"id":"cascade","name":"Cascade Independent Bank","type":"bank","bank":"indie","block":[2,1],"slot":"N1","color":"#7a6a4a","public":true},
+    {"id":"playerbank","name":"Sasquatch Savings (Your Bank)","type":"bank","bank":"player","block":[2,1],"slot":"S0","color":"#4f7a96","public":true},
+    {"id":"addis","name":"Addis Table","type":"restaurant","style":"ethiopian","block":[2,1],"slot":"S1","color":"#c99a2e","quality":77,"base":34,
+      "menu":[["Doro Wat & Injera",15,"platter","Spiced chicken stew on sour flatbread."],["Buna Coffee Ceremony",6,"coffee","Roasted, ground and brewed in a jebena."]]},
+
+    {"id":"station","name":"Union Station","type":"station","block":[3,1],"slot":"ALL","color":"#8a7a5a","public":true},
+
+    {"id":"cloudnine","name":"Cloud Nine Couch Cafe","type":"coffee","style":"indie","block":[0,2],"slot":"N0","color":"#7a8fa6","quality":69,"base":46,
+      "menu":[["Lavender Honey Latte",6,"latte","Floral and sleepy."],["Couch Cookie",3,"pastry","Giant chocolate chunk."]]},
+    {"id":"spicywolf","name":"Spicy Wolf Ramen","type":"restaurant","style":"ramen","block":[0,2],"slot":"N1","color":"#b8632f","quality":71,"base":32,
+      "menu":[["Wolf Pack Spicy Ramen",14,"ramen","Level 1 to 5 heat. Orange, not red."],["Cold Sesame Noodles",11,"ramen","Chilled, nutty."]]},
+    {"id":"derelict2","name":"Vacant - Former Laundromat","type":"derelict","block":[0,2],"slot":"S0","color":"#5d5a50","floors":2},
+    {"id":"apts5","name":"Hollis Flats","type":"apartments","block":[0,2],"slot":"S1","color":"#6c7d72","floors":4},
+
+    {"id":"park","name":"Baloo's Park","type":"park","block":[1,2],"slot":"ALL","public":true},
+
+    {"id":"phosaigon","name":"Pho Saigon Rain","type":"restaurant","style":"pho","block":[2,2],"slot":"N0","color":"#4f6b3a","quality":73,"base":36,
+      "menu":[["Pho Dac Biet",14,"pho","Everything-in-it special."],["Pho Ga",12,"pho","Clear chicken broth, ginger, herbs."]]},
+    {"id":"kglaze","name":"K-Glaze Donuts","type":"donut","style":"donut","block":[2,2],"slot":"N1","color":"#c99a2e","quality":63,"base":30,
+      "menu":[["Black Sesame Doughnut",4,"donut","Nutty, grey and glossy."],["Yuzu Glaze Ring",4,"donut","Bright citrus."]]},
+    {"id":"mart24","name":"Night Owl Market","type":"convenience","block":[2,2],"slot":"S0","color":"#4f7a96","quality":52,"base":34,
+      "items":[["Instant Noodles",3],["Hot Coffee Can",3],["Gum",2]]},
+    {"id":"drug2","name":"Rain City Pharmacy","type":"drug","block":[2,2],"slot":"S1","color":"#7a8f5e","quality":57,"base":28,
+      "items":[["Allergy Tabs",9],["Lip Balm",4],["Moisturizer",11]]},
+
+    {"id":"whalesong","name":"Whale Song Coffee Stand","type":"coffee","style":"vietnamese","block":[3,2],"slot":"N0","color":"#4f7a96","quality":67,"base":38,
+      "menu":[["Coconut Coffee",6,"vncoffee","Blended with coconut cream."],["Salted Cream Coffee",6,"vncoffee","Sweet-salty foam on top."]]},
+    {"id":"salmonrice","name":"Salmon & Rice","type":"restaurant","style":"seafood","block":[3,2],"slot":"N1","color":"#d9772b","quality":75,"base":36,
+      "menu":[["Teriyaki Salmon Bowl",16,"platter","Cedar-grilled, rice, pickles."],["Miso Soup",4,"pho","Tofu and wakame."]]},
+    {"id":"vacant1","name":"Vacant Lot","type":"lot","block":[3,2],"slot":"S0"},
+    {"id":"apts6","name":"Ravenna Flats","type":"apartments","block":[3,2],"slot":"S1","color":"#7c6f60","floors":5},
+
+    {"id":"gridiron","name":"Gridiron Diner & Coffee","type":"coffee","style":"diner","block":[2,3],"slot":"N0","color":"#c99a2e","quality":57,"base":36,
+      "menu":[["Counter Coffee",3,"coffee","Refills until you give up."],["Hash Browns & Eggs",9,"pancakes","Crispy edges."]]},
+    {"id":"bubblebear","name":"Bubble Bear Tea House","type":"restaurant","style":"tea","block":[1,3],"slot":"N1","color":"#7a5a3c","quality":68,"base":30,
+      "menu":[["Brown Sugar Boba",6,"boba","Tiger-striped cup, chewy pearls."],["Taro Milk Tea",6,"boba","Purple and creamy."]]}
+  ],
+  "npcNames": ["Mika","Tomas","Linh","Ada","Rafael","Noor","Hiro","Priya","Beck","Marguerite","Ollie","Sana","Dmitri","Wen","Odessa","Cal","Yuki","Bao","Tessa","Ibrahim","Rosa","Kenji","Fern","Jules","Magnus","Thuy","Gus","Elena","Anders","Maribel","Soo-jin","Pete","Luz","Abe","Colette","Nico","Hana","Otis","Amara","Brigid","Vik","Lena","Dale","Mai","Sven","Zoe","Quinn","Haruto","Ines","Walt"],
+  "occupations": ["barista on break","ferry deckhand","grad student","line cook","bike courier","night-shift nurse","street musician","software tester","fishmonger","retired teacher","tattoo artist","mail carrier","tour guide","tram enthusiast","bookbinder","dock worker","chef de cuisine","pet-store regular","librarian","kayak instructor"],
+  "quirks": ["loves puns","is always cold","collects bus transfers","reviews every noodle shop","believes the rain is a good omen","hums while talking","is training for a marathon","is secretly writing a novel","only drinks oat milk","is a Sasquatch-sighting skeptic","feeds pigeons despite the signs","speaks in short sentences"],
+  "specialNpcs": [
+    {"id":"dan","name":"Dan","kind":"dan","bio":"Wears a hoodie, jeans and a ballcap. Walks around with a green Quaker parrot on a leash named Pickle. Easygoing, loves coffee and birds.","pet":"green"},
+    {"id":"jes","name":"Jes","kind":"jes","bio":"Lovely, wears pink outfits. Walks around with a blue Quaker parrot on a leash named Bluebell. Warm and cheerful, notices small details.","pet":"blue"},
+    {"id":"spartan","name":"Leonidas Jr.","kind":"spartan","bio":"Always wears a full Spartan hoplite costume with bronze helmet, red cloak and shield. Takes it all very seriously. Dramatic speech. Weirdly polite."}
+  ],
+  "suppliers": {
+    "coffee": {
+      "beans": [
+        {"id":"bulk","name":"BulkBean Wholesale","cost":0.8,"quality":-6,"rep":0},
+        {"id":"rainier","name":"Rainier Roasters","cost":1.0,"quality":0,"rep":0},
+        {"id":"fairtrade","name":"Fremont Fair-Trade Co-op","cost":1.3,"quality":6,"rep":2}
+      ],
+      "cups": [
+        {"id":"paper","name":"PaperPlus Cups","cost":0.8,"quality":-2,"rep":-1},
+        {"id":"compost","name":"EcoCup Compostables","cost":1.2,"quality":1,"rep":2},
+        {"id":"ceramic","name":"Ceramic Mugs (dine-in)","cost":1.0,"quality":4,"rep":1}
+      ]
+    },
+    "restaurant": {
+      "ingredients": [
+        {"id":"wholesale","name":"Wholesale Produce Depot","cost":0.8,"quality":-6,"rep":0},
+        {"id":"pike","name":"Pike Provisions","cost":1.0,"quality":0,"rep":0},
+        {"id":"farm","name":"Skagit Farm Direct","cost":1.3,"quality":7,"rep":2}
+      ],
+      "packaging": [
+        {"id":"foam","name":"Cheap Takeout Boxes","cost":0.8,"quality":-2,"rep":-2},
+        {"id":"paperbox","name":"Kraft Paper Boxes","cost":1.0,"quality":0,"rep":0},
+        {"id":"compost","name":"Compostable Containers","cost":1.2,"quality":1,"rep":2}
+      ]
+    },
+    "payment": [
+      {"id":"stripey","name":"Stripey Pay (2.9% fee)","fee":0.029,"risk":0},
+      {"id":"taptap","name":"TapTap Terminal (1.5% + monthly)","fee":0.015,"risk":0},
+      {"id":"cash","name":"Cash only (no fee, riskier)","fee":0,"risk":1}
+    ]
+  },
+  "roastStyles": [
+    {"id":"light","name":"Light Roast","need":0,"buzz":0},
+    {"id":"medium","name":"Medium Roast","need":0,"buzz":0},
+    {"id":"dark","name":"Dark Roast","need":0,"buzz":0},
+    {"id":"nordic","name":"Nordic Bright","need":2,"buzz":3},
+    {"id":"cinnamon","name":"Cinnamon Cracker","need":4,"buzz":4},
+    {"id":"french","name":"French Smoke","need":6,"buzz":5},
+    {"id":"cascadia","name":"Cascadia Fog Blend","need":9,"buzz":7}
+  ],
+  "beans": [
+    {"id":"ethiopia","name":"Ethiopia Yirgacheffe","note":"blueberry, jasmine"},
+    {"id":"colombia","name":"Colombia Huila","note":"caramel, red apple"},
+    {"id":"sumatra","name":"Sumatra Mandheling","note":"earthy, cedar"},
+    {"id":"guatemala","name":"Guatemala Antigua","note":"cocoa, spice"},
+    {"id":"vietnam","name":"Vietnam Robusta","note":"bold, nutty, strong"}
+  ],
+  "enhancements": [
+    {"id":"paint","name":"Fresh Paint","cost":0.06,"value":0.05},
+    {"id":"kitchen","name":"Kitchen Upgrade","cost":0.12,"value":0.1},
+    {"id":"lighting","name":"Warm Lighting","cost":0.04,"value":0.03},
+    {"id":"patio","name":"Rain-proof Patio","cost":0.1,"value":0.08},
+    {"id":"mural","name":"Sasquatch Mural","cost":0.05,"value":0.06}
+  ]
+}

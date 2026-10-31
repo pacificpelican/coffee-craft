@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Coffee Craft</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="tilt-top"></div><div id="tilt-bottom"></div>
+
+<div id="hud" class="hidden">
+  <div id="notifs"></div>
+  <div id="prompt"></div>
+  <div id="hud-top">
+    <button id="btn-pause" title="Pause (P)">⏸</button>
+    <button id="btn-mute" title="Mute (M)">🔊</button>
+    <button id="btn-phone" title="Phone (Tab)">📱</button>
+  </div>
+  <div id="pad" class="pad">
+    <button data-d="-1,-1" class="d dnw"></button><button data-d="0,-1" class="d dn">▲</button><button data-d="1,-1" class="d dne"></button>
+    <button data-d="-1,0" class="d dw">◀</button><span class="d dc"></span><button data-d="1,0" class="d de">▶</button>
+    <button data-d="-1,1" class="d dsw"></button><button data-d="0,1" class="d ds">▼</button><button data-d="1,1" class="d dse"></button>
+  </div>
+  <div id="abtns">
+    <button data-k="talk" class="ab a1" title="Talk (/)">💬</button>
+    <button data-k="yes" class="ab a2" title="Interact / yes (.)">👍</button>
+    <button data-k="no" class="ab a3" title="No / avoid (,)">⛔</button>
+    <button data-k="friendly" class="ab a4" title="Friendly / enter / sit (')">▶️</button>
+  </div>
+</div>
+
+<div id="intro" class="overlay">
+  <div class="card intro">
+    <div id="intro-logo"></div>
+    <h1>Coffee Craft</h1>
+    <p class="slogan">A game of bags, beans and bad weather</p>
+    <p>Run two coffee shops in a damp, gritty, beloved city neighborhood — ramen counters, Korean donuts, a streetcar, an old train station and a park with a pickleball court. Your bank funds your shops; an independent bank competes with it. Wander, talk to the neighbors, drink something good.</p>
+    <div class="controls-info">
+      <b>Controls</b> — Move: arrows / WASD / on-screen pad &nbsp;·&nbsp; 💬 <kbd>/</kbd> talk &nbsp;·&nbsp; 👍 <kbd>.</kbd> interact / yes &nbsp;·&nbsp; ⛔ <kbd>,</kbd> no &nbsp;·&nbsp; ▶️ <kbd>'</kbd> friendly / enter / sit &nbsp;·&nbsp; <kbd>P</kbd> pause &nbsp;·&nbsp; <kbd>Tab</kbd> phone
+    </div>
+    <div class="row"><button id="play" class="big">▶ Play</button><button id="continue" class="big alt hidden">Continue</button></div>
+    <p class="credit">Created by <a href="https://altaredwood.work" target="_blank" rel="noopener">Daniel McKeown</a> · Alta Redwood Pictures</p>
+    <p id="intro-status" class="small"></p>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card">
+    <h2>Paused</h2>
+    <div class="row"><button id="p-resume" class="big">Resume</button><button id="p-settings" class="big alt">⚙ Settings</button><button id="p-shot" class="big alt">📷 Screenshot</button></div>
+    <div id="shot-box" class="hidden"></div>
+  </div>
+</div>
+
+<div id="modal" class="overlay hidden"><div class="card" id="modal-card"></div></div>
+<div id="phone" class="hidden"></div>
+<div id="print-sheet"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+config.local.php
+storage/*
+!storage/.gitkeep
+!storage/.htaccess
+node_modules/
+*.log
