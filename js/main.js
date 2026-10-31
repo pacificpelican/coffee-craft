@@ -417,7 +417,9 @@ function enterDojo() {
 
 function enterVenue(d) {
   if (d.special === 'dojo') return enterDojo();
-  const b = state.businesses[d.bizId]; const def = defOf(d.bizId) || {};
+  const def = defOf(d.bizId) || {};
+  // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
+  const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);
   if (!b) return;
   const hour = Math.floor(state.minutes / 60) % 24;
   const open = d.bizId === 'station' || def.public ? true : eco.hoursOpen(b, hour);
@@ -427,7 +429,7 @@ function enterVenue(d) {
   if (b.owner === 'player' && b.type === 'coffee' || b.owner === 'player' && b.type === 'restaurant') { b.totalVisitors++; }
   const t = b.type;
   openModal((c) => {
-    c.append(h('h3', {}, b.name), h('div', { class: 'small' }, `${b.style ? b.style + ' · ' : ''}${b.owner === 'player' ? 'Yours' : ''} · rep ${Math.round(b.reputation)} · buzz ${Math.round(b.buzz)}`));
+    c.append(h('h3', {}, b.name), h('div', { class: 'small' }, b.owner === 'public' ? '' : `${b.style ? b.style + ' · ' : ''}${b.owner === 'player' ? 'Yours' : ''} · rep ${Math.round(b.reputation)} · buzz ${Math.round(b.buzz)}`));
     const menu = G.menuFor(b);
     if (['coffee', 'restaurant', 'donut', 'pub'].includes(t) && menu.length) {
       c.append(h('p', { class: 'small' }, 'You take a seat. Tap an item to look at it.'), h('div', { class: 'menu-items' }, ...menu.map((it) => h('div', { class: 'menu-item', onclick: () => foodModal(b, it) }, h('img', { src: svgURI(foodSVG(it[2] || 'platter')), alt: '' }), h('b', {}, it[0]), h('div', {}, money(G.price(b, it[1])))))));
