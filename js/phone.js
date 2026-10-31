@@ -252,10 +252,14 @@ export function createPhone(G) {
     for (const n of list) el.append(h('div', { class: 'bizcard' }, h('div', { class: 'small' }, 'Day ' + n.day), h('div', {}, n.text)));
   }
   function chat(el) {
-    const s = S();
+    const s = S(), prefs = (s.chatPrefs ||= {});
+    const setPref = (c, v) => { if (v) prefs[c] = v; else delete prefs[c]; render(); };
+    const muteBtn = (c) => prefs[c] === 'blocked' ? null : h('button', { class: 'btn alt', title: 'Mute: messages still arrive, but no notifications', onclick: (e) => { e.stopPropagation(); setPref(c, prefs[c] === 'muted' ? null : 'muted'); } }, prefs[c] === 'muted' ? '🔔 Unmute' : '🔕 Mute');
+    const blockBtn = (c) => h('button', { class: 'btn warn', title: 'Block: no new messages at all', onclick: (e) => { e.stopPropagation(); setPref(c, prefs[c] === 'blocked' ? null : 'blocked'); } }, prefs[c] === 'blocked' ? '✅ Unblock' : '🚫 Block');
     if (chatWith && s.contacts.includes(chatWith)) {
-      const msgs = s.chats[chatWith] || [];
-      el.append(h('h3', {}, chatWith), ...msgs.map((m) => h('div', { class: 'say' + (m.me ? ' me' : '') }, m.text)));
+      const msgs = s.chats[chatWith] || [], blocked = prefs[chatWith] === 'blocked';
+      el.append(h('h3', {}, chatWith, prefs[chatWith] ? h('span', { class: 'small' }, prefs[chatWith] === 'muted' ? ' · muted' : ' · blocked') : ''), h('div', { class: 'row' }, muteBtn(chatWith), blockBtn(chatWith)), ...msgs.map((m) => h('div', { class: 'say' + (m.me ? ' me' : '') }, m.text)));
+      if (blocked) return el.append(h('p', { class: 'small' }, 'Blocked: unblock to message again.'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
       const inp = h('input', { placeholder: 'message…', style: 'width:70%' });
       el.append(inp, h('button', { class: 'btn', onclick: async () => {
         if (!inp.value.trim()) return; (s.chats[chatWith] ||= []).push({ me: true, text: inp.value });
@@ -266,7 +270,7 @@ export function createPhone(G) {
     }
     el.append(h('h3', {}, '💬 Chat'));
     if (!s.contacts.length) el.append(h('p', {}, 'No contacts yet. After a good conversation someone might offer to swap numbers.'));
-    for (const c of s.contacts) el.append(h('div', { class: 'app', style: 'margin:6px 0', onclick: () => { chatWith = c; render(); } }, c, ' ', h('span', { class: 'small' }, (s.chats[c] || []).slice(-1)[0]?.text?.slice(0, 40) || '')));
+    for (const c of s.contacts) el.append(h('div', { class: 'bizcard', style: 'margin:6px 0;cursor:pointer', onclick: () => { chatWith = c; render(); } }, h('b', {}, c, prefs[c] === 'muted' ? ' 🔕' : prefs[c] === 'blocked' ? ' 🚫' : ''), ' ', h('span', { class: 'small' }, (s.chats[c] || []).slice(-1)[0]?.text?.slice(0, 40) || ''), h('div', { class: 'row' }, muteBtn(c), blockBtn(c))));
   }
   function music(el) {
     const cur = getChannel();

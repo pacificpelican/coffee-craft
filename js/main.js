@@ -498,10 +498,14 @@ function tick(dt) {
 }
 
 async function contactMessage() {
-  if (!state.contacts.length) return;
-  const name = pick(state.contacts);
+  const prefs = state.chatPrefs || {};
+  const pool = state.contacts.filter((c) => prefs[c] !== 'blocked');
+  if (!pool.length) return;
+  const name = pick(pool);
   const text = server.ai ? (await npcReply({ persona: { name, occupation: 'friend', mood: 'friendly' } }, [{ role: 'user', content: 'Send a short friendly text message to the player about your day.' }], 'chat')) : pick(['Rain again! Coffee later?', 'Saw the streetcar get stuck behind a delivery truck 😂', 'Just heard a rumor about a new ramen place.']);
+  if ((state.chatPrefs || {})[name] === 'blocked') return;
   (state.chats[name] ||= []).push({ text });
+  if ((state.chatPrefs || {})[name] === 'muted') return;
   notify(`💬 ${name}: ${text.slice(0, 60)}`, { kind: 'chat', onclick: () => phone.open('chat', { chat: name }) });
 }
 
