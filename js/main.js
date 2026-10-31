@@ -91,7 +91,7 @@ async function boot() {
   if (saved) $('#continue').classList.remove('hidden');
   $('#intro-status').textContent = server.available ? `Server: ${server.storage}${server.ai ? ' · AI: ' + server.aiProvider : ' · AI off'}` : 'Static mode (no PHP): saves stay in this browser.';
   renderer.setAnimationLoop(frame);
-  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G };
+  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G, tram: tramSys.tram };
 }
 
 function wireEconomy() {
@@ -490,8 +490,26 @@ function movePlayer(dt) {
   playerMesh.position.set(player.x, player.y + (player.scooter ? 0.35 : 0), player.z); playerMesh.rotation.y = player.heading;
   playerMesh.rotation.x = player.eating > 0 ? Math.sin(t * 8) * 0.06 : 0;
   animateHuman(playerMesh, player.scooter || player.ride ? 0 : player.speed, t, !!player.sitting || !!player.scooter || player.ride === 'tram');
-  const cx = player.x + (shake ? shake : 0), cy = player.y + 12, cz = player.z + 15;
+  const cx = player.x + (shake ? shake : 0), cy = player.y + 17, cz = player.z + 17;
   camera.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 6)); camera.lookAt(player.x, player.y + 1.2, player.z - 1);
+  cutaway(dt);
+}
+
+// Buildings between the camera and the player sink to a low cutaway so the player stays visible.
+const bList = [];
+function cutaway(dt) {
+  if (!bList.length) for (const b of Object.values(world.buildings)) if (b.group) bList.push(b);
+  const a = camera.position, p = { x: player.x, y: player.y + 1.5, z: player.z };
+  for (const b of bList) {
+    let t0 = 0, t1 = 1, hit = true;
+    for (const [o, d, lo, hi] of [[a.x, p.x - a.x, b.x - b.w / 2 - 0.5, b.x + b.w / 2 + 0.5], [a.y, p.y - a.y, 0, b.h + 1], [a.z, p.z - a.z, b.z - b.d / 2 - 0.5, b.z + b.d / 2 + 0.5]]) {
+      if (Math.abs(d) < 1e-6) { if (o < lo || o > hi) { hit = false; break; } continue; }
+      let n = (lo - o) / d, f = (hi - o) / d; if (n > f) [n, f] = [f, n];
+      t0 = Math.max(t0, n); t1 = Math.min(t1, f); if (t0 > t1) { hit = false; break; }
+    }
+    const target = hit ? 0.04 : 1; const g = b.group;
+    if (Math.abs(g.scale.y - target) > 0.002) g.scale.y += (target - g.scale.y) * Math.min(1, dt * 8);
+  }
 }
 
 boot().catch((e) => { console.error(e); $('#intro-status').textContent = 'Failed to start: ' + e.message; });

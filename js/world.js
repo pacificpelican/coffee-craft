@@ -26,7 +26,7 @@ const STORE_TYPES = ['coffee', 'restaurant', 'donut', 'pub', 'convenience', 'dru
 export function buildWorld(scene, defList) {
   const world = {
     colliders: [], buildings: {}, doors: [], interactables: [], clickables: [], trashSpots: [], scooters: [], stops: [],
-    lamps: [], nightGlow: [], raisedSigns: [], spawn: new THREE.Vector3(-31, 0, 8), parkSign: null, dogs: [], parkBounds: null,
+    lamps: [], nightGlow: [], raisedSigns: [], spawn: new THREE.Vector3(-98, 0, -55), parkSign: null, dogs: [], parkBounds: null,
   };
   const rnd = mulberry(7);
   const add = (o) => { scene.add(o); return o; };
