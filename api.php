@@ -51,10 +51,11 @@ class JsonKV implements KV {
 class MysqlKV implements KV {
     private PDO $pdo;
     private string $where;
+    private string $kind = 'MySQL';
     public function __construct(array $c) {
         $dsn = "mysql:host={$c['host']};port={$c['port']};dbname={$c['database']};charset=utf8mb4";
-        $this->where = $c['host'] . '/' . $c['database'];
         $this->pdo = new PDO($dsn, $c['user'], $c['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        try { if (stripos((string)$this->pdo->query('SELECT VERSION()')->fetchColumn(), 'mariadb') !== false) $this->kind = 'MariaDB'; } catch (Throwable $e) { /* keep default */ }
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS cc_kv (k VARCHAR(190) PRIMARY KEY, v MEDIUMTEXT NOT NULL, t TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) DEFAULT CHARSET=utf8mb4');
     }
     public function get(string $k): ?string {
@@ -67,7 +68,7 @@ class MysqlKV implements KV {
         $this->pdo->prepare('REPLACE INTO cc_kv (k, v) VALUES (?, ?)')->execute([$k, $v]);
     }
     public function del(string $k): void { $this->pdo->prepare('DELETE FROM cc_kv WHERE k=?')->execute([$k]); }
-    public function label(): string { return 'MySQL/MariaDB (' . $this->where . ')'; }
+    public function label(): string { return $this->kind . ' database'; }
 }
 
 function open_store(array $cfg): KV {
@@ -189,7 +190,9 @@ try {
     $store = open_store($cfg);
 } catch (Throwable $e) {
     if ($action === 'info') {
-        out(['ok' => true, 'storage' => 'ERROR: ' . ($cfg['debug'] ? $e->getMessage() : 'storage unavailable'),
+        // PDO errors can contain host/user details, so only JSON-storage errors are shown, and only in debug mode.
+        $detail = ($cfg['debug'] && ($cfg['storage'] ?? 'json') !== 'mysql') ? $e->getMessage() : 'storage unavailable';
+        out(['ok' => true, 'storage' => 'ERROR: ' . $detail,
             'ai' => ai_provider($cfg) !== 'none', 'aiProvider' => ai_provider($cfg), 'user' => null,
             'registration' => false, 'php' => PHP_VERSION]);
     }
