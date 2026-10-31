@@ -1,9 +1,9 @@
 // Coffee Craft - main game loop and glue.
 import * as THREE from '../vendor/three.module.min.js';
 import { DATA, loadData } from './data.js';
-import { server, initServer, account, aiText } from './api.js';
+import { server, initServer, account, aiText, aiJson } from './api.js';
 import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
-import { LOGO_SVG, foodSVG, svgURI } from './art.js';
+import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS } from './art.js';
 import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel } from './audio.js';
 import * as eco from './economy.js';
 import { buildWorld, groundHeight, INT, BOUNDS } from './world.js';
@@ -298,7 +298,7 @@ function scooterActions(e) {
   if (e.yes) s.thr = 1.2; if (e.no) s.v *= 0.3; if (e.talk) { s.v = Math.max(s.v, 12); sfx('scooterOn'); }
   if (e.friendly) { if (Math.abs(s.v) < 1.5) { player.scooter = null; s.riding = false; player.x = s.x + 1.4; player.z = s.z; sfx('scooterOff'); } else { s.slide = 0.5; } }
 }
-const G_mini = () => ({ state, notify, sfx, aiText, server, npcReply, money, eco, DATA, closeModal, price: G.price, unlockRoast, h, foodSVG, svgURI, pickRoast: pickRoastStyles });
+const G_mini = () => ({ state, notify, sfx, aiText, aiJson, BAG_MOTIFS, server, npcReply, money, eco, DATA, closeModal, price: G.price, unlockRoast, h, foodSVG, svgURI, pickRoast: pickRoastStyles });
 
 // ----------------------------------------------------------- dialogue
 const OFFLINE = {

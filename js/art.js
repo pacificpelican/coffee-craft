@@ -47,6 +47,40 @@ export function foodSVG(kind, variant) {
 }
 export const svgURI = (s) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 
+// ------------------------------------------------------------- roast bags
+export const BAG_MOTIFS = ['mountain', 'wave', 'sun', 'moon', 'leaf', 'bird', 'fog', 'star'];
+const hexOk = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+const hashStr = (s) => { let x = 2166136261; for (const ch of String(s)) x = Math.imul(x ^ ch.charCodeAt(0), 16777619); return x >>> 0; };
+const esc2 = (s) => String(s).replace(/[<>&"']/g, '');
+
+// Deterministic default design from the roast name; an AI design (colors, motif, tagline) overrides it when valid.
+export function bagDesign(r) {
+  const n = hashStr(r.name), hue = n % 360;
+  const hsl = (hh, s, l) => { const a = s * Math.min(l, 1 - l); const f = (k) => { const kk = (k + hh / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(kk - 3, 9 - kk, 1)))).toString(16).padStart(2, '0'); }; return '#' + f(0) + f(8) + f(4); };
+  const d = { bg: hsl(hue, 0.35, r.heat < 35 ? 0.78 : r.heat < 65 ? 0.6 : 0.3), accent: hsl((hue + 160) % 360, 0.55, 0.45), motif: BAG_MOTIFS[(n >> 3) % BAG_MOTIFS.length], tagline: '' };
+  const a = r.design || {};
+  if (hexOk(a.bg)) d.bg = a.bg; if (hexOk(a.accent) && a.accent.toLowerCase() !== d.bg.toLowerCase()) d.accent = a.accent;
+  if (BAG_MOTIFS.includes(a.motif)) d.motif = a.motif;
+  if (typeof a.tagline === 'string') d.tagline = esc2(a.tagline).slice(0, 34);
+  return d;
+}
+
+export function bagSVG(r) {
+  const d = bagDesign(r), ink = '#23291f';
+  const motifs = {
+    mountain: `<path d="M20 130 L50 80 L68 106 L88 66 L120 130z" fill="${d.accent}"/><path d="M88 66 L96 80 L82 80z" fill="#fff"/>`,
+    wave: `<path d="M20 110q15-20 30 0t30 0t30 0v20H20z" fill="${d.accent}"/><path d="M20 94q15-20 30 0t30 0t30 0" fill="none" stroke="${d.accent}" stroke-width="5"/>`,
+    sun: `<circle cx="70" cy="100" r="26" fill="${d.accent}"/><path d="M70 60v-10M70 150v-10M30 100H20M120 100h-10M42 72l-7-7M105 135l-7-7" stroke="${d.accent}" stroke-width="5" stroke-linecap="round"/>`,
+    moon: `<path d="M86 70a34 34 0 1 0 0 64a28 28 0 1 1 0-64z" fill="${d.accent}"/><circle cx="100" cy="82" r="3" fill="${ink}"/>`,
+    leaf: `<path d="M40 130q0-70 70-70q0 70-70 70z" fill="${d.accent}"/><path d="M44 126L98 72" stroke="${ink}" stroke-width="3"/>`,
+    bird: `<path d="M24 96q24-30 46 0q22-30 46 0q-22-10-46 12q-24-22-46-12z" fill="${d.accent}"/>`,
+    fog: `<g stroke="${d.accent}" stroke-width="8" stroke-linecap="round"><path d="M26 80h70M40 100h80M26 120h60M50 138h60"/></g>`,
+    star: `<path d="M70 58l10 24 26 2-20 17 7 25-23-14-23 14 7-25-20-17 26-2z" fill="${d.accent}"/>`,
+  };
+  const name = esc2(r.name), words = name.split(' '), l1 = words.slice(0, 2).join(' '), l2 = words.slice(2).join(' ');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 200"><path d="M18 24h104l8 160H10z" fill="${d.bg}" stroke="${ink}" stroke-width="4" stroke-linejoin="round"/><path d="M18 24h104l2 16H16z" fill="${ink}" opacity=".85"/><rect x="26" y="52" width="88" height="88" rx="8" fill="#f4ecd4" opacity=".85" stroke="${ink}" stroke-width="2"/><g transform="translate(0,2)">${motifs[d.motif]}</g><text x="70" y="153" text-anchor="middle" font-family="Georgia,serif" font-weight="bold" font-size="12" fill="${ink}">${l1}</text><text x="70" y="166" text-anchor="middle" font-family="Georgia,serif" font-size="10" fill="${ink}">${l2}</text><text x="70" y="178" text-anchor="middle" font-family="Georgia,serif" font-style="italic" font-size="7.5" fill="${ink}">${d.tagline}</text></svg>`;
+}
+
 // Reject anything script-like from AI supplied SVG; it is only ever shown via <img> anyway.
 export function sanitizeSVG(s) {
   if (!s || !/<svg[\s>]/i.test(s)) return null;

@@ -59,7 +59,10 @@ export function playRoaster(card, g, done) {
       const body = heat < 35 ? 'bright and tea-like' : heat < 65 ? 'balanced and caramel-forward' : 'smoky and bittersweet';
       const b = beans.find((x) => x.id === bean); const name = `${heat < 35 ? 'Foggy' : heat < 65 ? 'Mossy' : 'Midnight'} ${b.name.split(' ')[0]}${blend > 50 ? ' Robusta Rush' : ''}`;
       g.state.roastTries++; const u = g.unlockRoast();
-      out.textContent = `“${name}”: ${body}, notes of ${b.note}. ${u ? 'Unlocked: ' + u.name + '! Choose it in Settings → Business.' : 'Experiments so far: ' + g.state.roastTries + '.'}`;
+      const rec = { name, bean: b.id, beanName: b.name, note: b.note, body, heat: Math.round(heat), blend, day: g.state.day, tagline: '' };
+      (g.state.roastLog ||= []).push(rec); if (g.state.roastLog.length > 60) g.state.roastLog.shift();
+      if (g.aiJson) g.aiJson('You design coffee bag labels for a rainy Pacific Northwest roastery. Keep it playful and family friendly.', `Roast "${name}": ${body}, notes of ${b.note}. Return {"bg":"#rrggbb","accent":"#rrggbb","motif":one of ${g.BAG_MOTIFS.join('|')},"tagline":"max 30 chars"}`).then((d) => { if (d && typeof d === 'object') rec.design = { bg: d.bg, accent: d.accent, motif: d.motif, tagline: d.tagline }; });
+      out.textContent = `“${name}”: ${body}, notes of ${b.note}. ${u ? 'Unlocked: ' + u.name + '! Choose it in Settings → Business.' : 'Experiments so far: ' + g.state.roastTries + '.'} Saved to Phone → Settings → Roasts.`;
       g.state.points += 3; g.sfx('sip');
     }, 1400);
   }

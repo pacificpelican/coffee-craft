@@ -3,7 +3,7 @@ import { h, money, esc, fmtClock } from './util.js';
 import { DATA } from './data.js';
 import { server, account, aiText, aiJson } from './api.js';
 import * as eco from './economy.js';
-import { LOGO_SVG, foodSVG, svgURI } from './art.js';
+import { LOGO_SVG, foodSVG, svgURI, bagSVG } from './art.js';
 import { getChannel, setChannel, sfx } from './audio.js';
 import { playPickleball } from './minigames.js';
 
@@ -11,7 +11,7 @@ const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
   ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['store', '⬇️', 'App Downloader'],
 ];
-const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
+const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
 export function createPhone(G) {
   const root = document.getElementById('phone');
@@ -50,7 +50,7 @@ export function createPhone(G) {
   function settings(el) {
     el.append(h('div', { class: 'tabs' }, ...TABS.map((t) => h('button', { class: t === tab ? 'on' : '', onclick: () => { tab = t; render(); } }, t + (t === 'Bank' && S().bank.decisions.length ? ` (${S().bank.decisions.length})` : '')))));
     const body = h('div'); el.append(body);
-    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Controls: tControls, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
+    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Controls: tControls, Roasts: tRoasts, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
   }
   const kv = (k, v) => h('div', { class: 'kv' }, h('span', {}, k), h('b', {}, String(v)));
 
@@ -188,6 +188,16 @@ export function createPhone(G) {
           el.append(h('button', { class: 'btn', onclick: async () => { out.textContent = 'Asking the AI…'; const t = await G.aiText('Reply in five words or fewer.', [{ role: 'user', content: 'Say hello to a coffee shop customer.' }]); out.textContent = t ? '✨ AI works: “' + t + '”' : '⚠ AI is enabled but did not answer. Is Ollama running and the model pulled? Set debug => true in config.local.php for details in the server log.'; } }, 'Test AI'), out);
         }
       }
+  function tRoasts(el) {
+    const s = S(), log = s.roastLog || [];
+    el.append(h('h3', {}, '🔥 Roasts'), h('p', { class: 'small' }, 'Styles unlocked by experimenting at the Roast Lab, and every batch you have roasted. Bag labels are AI-designed when AI is on.'));
+    el.append(h('b', {}, 'Styles'), ...DATA.roastStyles.map((r) => h('div', { class: 'kv' }, h('span', {}, r.name), h('span', { class: 'small' }, s.roastsUnlocked.includes(r.id) ? 'unlocked' : `locked · ${r.need} experiments`))));
+    el.append(h('hr'), h('b', {}, `Batches (${log.length})`));
+    if (!log.length) return el.append(h('p', { class: 'small' }, 'Nothing roasted yet. Use the roaster at the Roast Lab.'));
+    el.append(h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:6px' }, ...log.slice().reverse().map((r) => h('div', { class: 'bizcard', style: 'text-align:center' },
+      h('img', { src: svgURI(bagSVG(r)), alt: r.name, style: 'width:100%;max-width:120px' }), h('b', {}, r.name), h('div', { class: 'small' }, `${r.beanName} · day ${r.day}`), h('div', { class: 'small' }, `${r.body}${r.blend > 50 ? ' · robusta-heavy' : ''}`)))));
+  }
+
   function tControls(el) {
     const rows = [
       ['Move', 'Arrow keys / WASD / on-screen pad'],
