@@ -134,7 +134,7 @@ export function buildWorld(scene, defList) {
       world.nightGlow.push();
     } else if (def.type === 'apartments' || def.type === 'studio') {
       const door = box(1.8, 3, 0.2, '#4a3020', 0, 1.5, fz + 0.1); g.add(door);
-      const lobby = box(w - 6, 2.6, 0.1, '#3b4a52', 0, 1.8, fz + 0.05); lobby.position.x = 6; g.add(lobby);
+      const lobby = box(8, 2.6, 0.1, '#3b4a52', 5.5, 1.8, fz + 0.05); g.add(lobby);
       const lobby2 = box(4, 2.6, 0.1, '#3b4a52', -7, 1.8, fz + 0.05); g.add(lobby2);
     } else {
       const gl = new THREE.Mesh(new THREE.PlaneGeometry(w - 6, 2.8), basic('#43606a')); gl.position.set(0, 1.9, fz + 0.03); gl.userData.glass = true; g.add(gl);
