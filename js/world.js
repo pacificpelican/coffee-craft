@@ -395,7 +395,7 @@ export function buildWorld(scene, defList) {
     p.position.set(C[1] + 1, 2.3, C[2] - 24.6); p.rotation.y = Math.PI; add(p); world.clickables.push({ mesh: p, url: 'https://sf3am.com' });
     world.interactables.push({ type: 'poster', x: C[1] + 1, z: C[2] - 26, r: 2.8, label: 'SF3AM poster', url: 'https://sf3am.com' });
     // Alta Redwood Pictures bridge banner
-    const sm = new THREE.MeshBasicMaterial({ map: canvasTex(256, 72, (c, w, h) => { c.fillStyle = '#2b2f2a'; c.fillRect(0, 0, w, h); const im = new Image(); c.fillStyle = '#e9e0c8'; c.font = 'bold 26px Georgia'; c.textAlign = 'center'; c.fillText('Alta Redwood Pictures', w / 2 + 16, 44); c.strokeStyle = '#e9e0c8'; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 36); c.lineTo(8, 20); c.moveTo(24, 36); c.lineTo(40, 20); c.moveTo(24, 36); c.lineTo(40, 52); c.moveTo(24, 36); c.lineTo(8, 52); c.stroke(); }, THREE) });
+    const sm = new THREE.MeshBasicMaterial({ map: canvasTex(256, 72, (c, w, h) => { c.fillStyle = '#2b2f2a'; c.fillRect(0, 0, w, h); const im = new Image(); c.fillStyle = '#e9e0c8'; let fs = 26; c.font = `bold ${fs}px Georgia`; while (c.measureText('Alta Redwood Pictures').width > w - 62 && fs > 10) { fs -= 1; c.font = `bold ${fs}px Georgia`; } c.textAlign = 'center'; c.fillText('Alta Redwood Pictures', 50 + (w - 56) / 2, 44); c.strokeStyle = '#e9e0c8'; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 36); c.lineTo(8, 20); c.moveTo(24, 36); c.lineTo(40, 20); c.moveTo(24, 36); c.lineTo(40, 52); c.moveTo(24, 36); c.lineTo(8, 52); c.stroke(); }, THREE) });
     const bn = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.8), sm); bn.position.set(-30, 8.5, -129.6); add(bn);
   }
 
