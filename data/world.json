@@ -32,7 +32,8 @@
       "items":[["Camera Drone",2400,"drone"],["Vintage Camera",900,"camera"],["Headphones",120]]},
     {"id":"greenfern","name":"Green Fern Dispensary","type":"weed","block":[3,0],"slot":"N1","color":"#4f6b3a","quality":75,"base":40,
       "items":[["Fern Reserve Pre-roll",25,"weed_good"],["Gummies",18,"weed_good"]]},
-    {"id":"apts3","name":"Eastgate Apartments","type":"apartments","block":[3,0],"slot":"S0","color":"#7c6f60","floors":6},
+    {"id":"apts3","name":"Eastgate Apartments","type":"apartments","block":[3,0],"slot":"S0","color":"#7c6f60","floors":6,
+      "backDoor":{"id":"dojo","name":"Cedar Crane Dojo","x":8.5}},
     {"id":"barista9","name":"Barista-9000","type":"coffee","style":"robot","block":[3,0],"slot":"S1","color":"#8a8f8c","quality":62,"base":42,
       "menu":[["Robo-Flat White",6,"latte","Perfectly measured, eerily symmetrical."],["Nitro Circuit Cold Brew",6,"coffee","Cold brew on nitro, served by an arm."],["Binary Biscotti",4,"pastry","Two shapes: zero and one."]]},
 

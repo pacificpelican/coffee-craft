@@ -318,6 +318,7 @@ async function npcReply(n, msgs, ctx = 'street') {
   if (ai) return ai.replace(/\s+/g, ' ').slice(0, 300);
   if (p.name === 'Dan') return pick(['Pickle says hi. Well, he screams hi.', 'Green parrot, big opinions. You get used to it.']);
   if (p.name === 'Jes') return pick(['Bluebell loves pink. So do I, obviously.', 'Isn’t the light nice through all this cloud?']);
+  if (p.name === 'Sifu Wen') return pick(['The rain does not hurry, yet the gutters fill.', 'Drink your tea. The mat will wait.', 'A calm mind reads the kick before it leaves the hip.']);
   if (n.kind === 'spartan') return pick(['THIS. IS. A REALLY GOOD SCONE.', 'I fight only in the rain. Tonight, I eat noodles.']);
   if (n.kind === 'dealer') return pick(['…keep your voice down.', 'Quiet night. Interested, or just looking?']);
   return pick(OFFLINE[p.mood] || OFFLINE.cheerful);
@@ -387,7 +388,35 @@ function foodModal(b, item) {
 }
 function enterVenueById(id) { const d = world.doors.find((x) => x.bizId === id); if (d) enterVenue(d); }
 
+// ----------------------------------------------------------- martial arts studio (behind Eastgate Apartments)
+const BELTS = ['White', 'Yellow', 'Green', 'Brown', 'Black'], DOJO_FEE = 40;
+const dojoState = () => (state.dojo ||= { wins: 0, sessions: 0 });
+const beltOf = () => Math.min(4, Math.floor(dojoState().wins / 2));
+const sifu = { persona: { name: 'Sifu Wen', occupation: 'martial arts guru', quirk: 'serene, speaks in short calm proverbs, loves tea and rain, dry humor', mood: 'serene' }, kind: 'guru' };
+function enterDojo() {
+  sfx('door');
+  const hour = Math.floor(state.minutes / 60) % 24;
+  if (hour >= 23 || hour < 6) { closeModal(); return notify('The dojo lantern is dark. Sifu Wen teaches 6:00–23:00.', { sound: false }); }
+  const dj = dojoState(), belt = beltOf();
+  openModal((c) => {
+    c.append(h('h3', {}, 'Cedar Crane Dojo'), h('div', { class: 'small' }, `Your belt: ${BELTS[belt]} · sparring wins ${dj.wins}`),
+      h('p', {}, 'Tatami mats, a rack of bamboo swords, rain ticking on the skylight. Sifu Wen, small and serene in a faded black gi, looks up from her tea.'),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', onclick: () => {
+          if (state.bank.cash < DOJO_FEE) return notify('Not enough funds for a lesson.');
+          state.bank.cash -= DOJO_FEE; dj.sessions++; sfx('coin');
+          openModal((cc) => playFight(cc, G_mini(), enterDojo, {
+            foe: 'Sifu Wen', spar: true, level: belt, skill: belt, title: '🥋 Sparring with Sifu Wen',
+            onEnd: (won) => { if (!won) return; dj.wins++; state.points += 3; const nb = beltOf(); if (nb > belt) notify(`🥋 Sifu Wen ties a ${BELTS[nb]} belt around your waist.`); },
+          }));
+        } }, `🥋 Spar with Sifu Wen ($${DOJO_FEE})`),
+        h('button', { class: 'btn alt', onclick: () => startDialogue(sifu) }, '💬 Talk to Sifu Wen'),
+        h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
+  });
+}
+
 function enterVenue(d) {
+  if (d.special === 'dojo') return enterDojo();
   const b = state.businesses[d.bizId]; const def = defOf(d.bizId) || {};
   if (!b) return;
   const hour = Math.floor(state.minutes / 60) % 24;

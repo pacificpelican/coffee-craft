@@ -71,11 +71,54 @@ export function playEspresso(card, g, done) {
   card.append(h('h3', {}, 'Espresso Machine'), cup, msg, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: pull(1) }, 'Single'), h('button', { class: 'btn', onclick: pull(2) }, 'Double'), h('button', { class: 'btn warn', onclick: done }, 'Leave')));
 }
 
-export function playFight(card, g, done) {
-  let me = 10, foe = 10;
-  const o = h('p', {}, 'A rowdy customer squares up.');
-  const hp = () => `You ${'❤'.repeat(me)} vs Rowdy ${'❤'.repeat(foe)}`;
-  const st = h('div', {}, hp());
-  const hit = (kind) => () => { g.sfx('punch'); const ok = kind === 'jab' ? Math.random() < 0.8 : Math.random() < 0.5; if (ok) foe -= kind === 'jab' ? 1 : 3; if (Math.random() < (kind === 'block' ? 0.2 : 0.5)) me -= 1; st.textContent = hp(); if (foe <= 0 || me <= 0) { o.textContent = foe <= 0 ? 'They slink off.' : 'You get shoved out. Police arrive.'; if (foe <= 0) g.state.rep += 2; setTimeout(done, 1200); } };
-  card.append(h('h3', {}, 'Scuffle'), o, st, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: hit('jab') }, 'Jab'), h('button', { class: 'btn warn', onclick: hit('haymaker') }, 'Haymaker'), h('button', { class: 'btn alt', onclick: hit('block') }, 'Block')));
+const FOE_MOVES = { high: '🦵 a high kick', low: '🌀 a low sweep', rush: '🤼 a charging grab' };
+const COUNTER = { high: 'block', low: 'hop', rush: 'strike' };
+
+// Telegraphed fight: read the opponent's stance and pick the counter. Higher `level` foes feint more often.
+// opts: { foe, hp, spar (friendly: no police or reputation fallout), level, skill (player belt 0-4), title, onEnd(won) }
+export function playFight(card, g, done, opts = {}) {
+  const { foe: foeName = 'Rowdy', spar = false, level = 0, skill = 0 } = opts;
+  const maxHp = opts.hp || 8;
+  let me = maxHp, foe = maxHp, over = false, intent = 'high', shown = 'high';
+  const pips = (n) => '❤'.repeat(Math.max(0, n)) + '♡'.repeat(maxHp - Math.max(0, n));
+  const bars = h('div', { style: 'font-size:18px;letter-spacing:2px;text-align:center' });
+  const stage = h('div', { style: 'font-size:42px;text-align:center;min-height:54px' }, '🥋 ⚔️ 🥷');
+  const msg = h('p', { style: 'min-height:3.2em' });
+  const row = h('div', { class: 'row' });
+  const draw = () => { bars.replaceChildren(h('div', {}, `You ${pips(me)}`), h('div', {}, `${foeName} ${pips(foe)}`)); };
+  const next = () => {
+    intent = pick(['high', 'low', 'rush']);
+    const feint = Math.random() < 0.06 + level * 0.07;
+    shown = feint ? pick(['high', 'low', 'rush'].filter((m) => m !== intent)) : intent;
+    msg.textContent = `${foeName} sets up ${FOE_MOVES[shown]}…`;
+    draw();
+  };
+  const finish = (won) => {
+    over = true; g.sfx(won ? 'bell' : 'hit');
+    if (spar) msg.textContent = won ? `${foeName} bows. “Good. Again sometime.”` : `You tap out. ${foeName} smiles: “Again. Breathe.”`;
+    else if (won) { g.state.rep = clamp(g.state.rep + 2, 0, 100); msg.textContent = `${foeName} slinks off. The neighbors noticed.`; }
+    else { g.state.rep = clamp(g.state.rep - 2, 0, 100); g.state.scrutiny += 5; msg.textContent = 'You get shoved out. Police arrive.'; g.sfx('siren'); }
+    stage.textContent = won ? '🥋 🏆' : '🥋 💫';
+    opts.onEnd?.(won);
+    row.replaceChildren(h('button', { class: 'btn', onclick: done }, 'Continue'));
+  };
+  const act = (c) => {
+    if (over) return;
+    const ok = COUNTER[intent] === c;
+    const feinted = shown !== intent;
+    if (ok) {
+      foe -= 2 + (skill >= 2 ? 1 : 0); g.sfx('punch');
+      msg.textContent = feinted ? 'It was a feint, and you read it. Clean counter!' : 'You read it perfectly. Clean counter!';
+    } else {
+      me -= 1; g.sfx('hit');
+      msg.textContent = feinted ? `A feint! It was really ${FOE_MOVES[intent]}. You take a hit.` : `Wrong answer to ${FOE_MOVES[intent]}. You take a hit.`;
+    }
+    draw();
+    if (foe <= 0) return finish(true);
+    if (me <= 0) return finish(false);
+    setTimeout(() => { if (!over) next(); }, 900);
+  };
+  row.append(h('button', { class: 'btn', onclick: () => act('block') }, '🛡 Block'), h('button', { class: 'btn alt', onclick: () => act('hop') }, '⤴ Hop'), h('button', { class: 'btn warn', onclick: () => act('strike') }, '👊 Strike'));
+  card.append(h('h3', {}, opts.title || 'Scuffle'), stage, bars, msg, row, h('p', { class: 'small' }, 'Block beats a high kick, hop beats a low sweep, strike beats a grab.'));
+  next();
 }

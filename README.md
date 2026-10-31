@@ -82,5 +82,5 @@ Content is data-driven: add a JSON file to `data/mods/` and list it in `data/mod
 ## Known simplifications
 
 Venue interiors are modal screens, not walkable 3D rooms.
-The hand-to-hand fight mini-game exists but nothing triggers it.
+The fight mini-game is only played as sparring at the Cedar Crane Dojo (the alley door behind Eastgate Apartments, open 6:00–23:00, $40 per bout, belts rise with wins); random street fights don't exist.
 Police response and troublemaker NPCs are minimal.
