@@ -11,7 +11,7 @@ const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
   ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['store', '⬇️', 'App Downloader'],
 ];
-const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'TOWS', 'Debug', 'Credits', 'Terms', 'Privacy'];
+const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
 export function createPhone(G) {
   const root = document.getElementById('phone');
@@ -50,7 +50,7 @@ export function createPhone(G) {
   function settings(el) {
     el.append(h('div', { class: 'tabs' }, ...TABS.map((t) => h('button', { class: t === tab ? 'on' : '', onclick: () => { tab = t; render(); } }, t + (t === 'Bank' && S().bank.decisions.length ? ` (${S().bank.decisions.length})` : '')))));
     const body = h('div'); el.append(body);
-    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
+    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Controls: tControls, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
   }
   const kv = (k, v) => h('div', { class: 'kv' }, h('span', {}, k), h('b', {}, String(v)));
 
@@ -188,6 +188,22 @@ export function createPhone(G) {
           el.append(h('button', { class: 'btn', onclick: async () => { out.textContent = 'Asking the AI…'; const t = await G.aiText('Reply in five words or fewer.', [{ role: 'user', content: 'Say hello to a coffee shop customer.' }]); out.textContent = t ? '✨ AI works: “' + t + '”' : '⚠ AI is enabled but did not answer. Is Ollama running and the model pulled? Set debug => true in config.local.php for details in the server log.'; } }, 'Test AI'), out);
         }
       }
+  function tControls(el) {
+    const rows = [
+      ['Move', 'Arrow keys / WASD / on-screen pad'],
+      ['💬 Talk', '/ (or the 💬 button) to a nearby neighbor or animal'],
+      ['👍 Interact / yes', '. (period)'],
+      ['⛔ No / cancel', ', (comma)'],
+      ['▶️ Friendly / enter / sit / ride', "' (apostrophe): enter doors, sit on benches, ride scooters, board the streetcar"],
+      ['Rotate camera', 'Q / E, right-mouse drag, or two-finger twist'],
+      ['Zoom camera', 'Mouse wheel or two-finger pinch'],
+      ['Pause', 'P'],
+      ['Phone', 'Tab or the 📱 button'],
+      ['Mini-games', 'Pickleball: mouse/touch drag or ←/→. Dojo sparring: tap Block, Hop or Strike.'],
+    ];
+    el.append(h('h3', {}, '🎮 Controls'), ...rows.map(([k, v]) => h('div', { class: 'kv' }, h('span', {}, k), h('span', { class: 'small' }, v))));
+  }
+
   function tCredits(el) {
     el.append(h('div', { style: 'text-align:center' }, h('div', { html: LOGO_SVG, style: 'width:100px;margin:auto' }), h('h3', {}, 'Coffee Craft'),
       h('p', { html: 'created by <a href="https://altaredwood.work" target="_blank" rel="noopener">Daniel McKeown</a>' }), h('p', { class: 'small' }, 'Alta Redwood Pictures. Library text: Kusamakura by Natsume Sōseki (1906).')));
