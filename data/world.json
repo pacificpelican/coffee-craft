@@ -85,7 +85,7 @@
       "menu":[["Teriyaki Salmon Bowl",16,"platter","Cedar-grilled, rice, pickles."],["Miso Soup",4,"pho","Tofu and wakame."]]},
     {"id":"nightowl","name":"Sunrise Always Diner","type":"restaurant","style":"24-hr diner","hours":[0,24],"block":[3,2],"slot":"S0","color":"#c2483a","quality":60,"base":34,
       "menu":[["Graveyard Shift Skillet",11,"pancakes","Potatoes, peppers, sausage and two eggs, any hour."],["Bottomless Black Coffee",3,"coffee","Thick white mug, endless refills."],["Meatloaf Plate",13,"platter","Gravy, mash and green beans, 3 a.m. approved."]]},
-    {"id":"apts6","name":"Ravenna Flats","type":"apartments","block":[3,2],"slot":"S1","color":"#7c6f60","floors":5},
+    {"id":"apts6","name":"Fir Street Apartments","type":"apartments","block":[3,2],"slot":"S1","color":"#7c6f60","floors":5,"backDoor":{"id":"comedy","name":"The Drizzle Room","special":"comedy","x":-6.5,"sub":"comedy club · open mic","signBg":"#5a1430","doorColor":"#2a1020","lantern":"#ff5c8a"}},
 
     {"id":"gridiron","name":"Gridiron Diner & Coffee","type":"coffee","style":"diner","block":[2,3],"slot":"N0","color":"#c99a2e","quality":57,"base":36,
       "menu":[["Counter Coffee",3,"coffee","Refills until you give up."],["Hash Browns & Eggs",9,"pancakes","Crispy edges."]]},

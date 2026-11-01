@@ -583,11 +583,54 @@ function enterCellar() {
     h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
 }
 
+// Comedy club behind Fir Street Apartments: bland built-in bits, or an original AI-written set when AI is on.
+const COMICS = ['Marty Pemberton', 'Dolores Quill', 'Big Tran', 'Hazel Okonkwo-Reyes', 'Lenny Fisk', 'Priya Dunmore'];
+const BLAND_BITS = [
+  'So I went to the grocery store. You ever notice how the cart always has one bad wheel? Always. Just one. Like it\u2019s a team and that wheel is the intern.',
+  'I tried to eat healthy this week. I bought a salad. I put it in the fridge. It\u2019s doing great. It\u2019s very healthy. It\u2019s a very healthy salad that I do not eat.',
+  'Parking in this city, am I right? I circled for twenty minutes. Found a spot. It was a driveway. Someone\u2019s driveway. We\u2019re friends now.',
+  'My phone says I\u2019m using it four hours a day. Four hours! That\u2019s a part-time job with no pay and the boss is a rectangle.',
+  'Why do they call it a \u201crush hour\u201d when nobody is moving? That\u2019s not a rush. That\u2019s a very slow hour, with feelings.',
+  'I love coffee. People say, \u201cYou drink too much coffee.\u201d That\u2019s not a thing. It\u2019s like saying I\u2019m too awake. Who is that for?',
+  'It rains here so much that I don\u2019t check the forecast. I check the mood. \u201cToday it\u2019s drizzly, with a chance of drizzle.\u201d',
+];
+let comedyBusy = false;
+function enterComedy() {
+  sfx('door');
+  const hour = Math.floor(state.minutes / 60) % 24;
+  if (hour >= 3 && hour < 18) { closeModal(); return notify('The Drizzle Room is dark. Shows run 18:00\u201303:00.', { sound: false }); }
+  const FEE = 12;
+  const tickets = state.comedyTickets || 0;
+  const comic = COMICS[(state.day + tickets) % COMICS.length];
+  const stage = (text, aiMade) => openModal((m) => {
+    m.append(h('h3', {}, '\ud83c\udfa4 The Drizzle Room'),
+      h('div', { style: 'background:#2a1020;color:#ffd7e4;padding:12px;border-radius:12px;border:3px solid #ff5c8a' },
+        h('div', { class: 'small', style: 'color:#ff9bb8' }, `${comic}${aiMade ? ' \u00b7 \u2728 brand-new material' : ''}`),
+        h('p', { style: 'font-size:1.05em;line-height:1.4' }, text)),
+      h('p', { class: 'small' }, pick(['\ud83d\udc4f The crowd applauds politely.', '\ud83d\ude10 A single person laughs, a beat late.', '\ud83e\udd57 Someone coughs. The comic powers through.', '\ud83d\ude02 Surprisingly, a real laugh from the back.'])),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => next() }, `\ud83d\udc4d Another bit (${money(FEE)})`), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
+  });
+  const next = async () => {
+    if (comedyBusy) return;
+    if (state.bank.cash < FEE) return notify('You can\u2019t cover the cover charge.', { sound: false });
+    state.bank.cash -= FEE; state.comedyTickets = (state.comedyTickets || 0) + 1; sfx('coin');
+    if (!server.ai) return stage(pick(BLAND_BITS), false);
+    comedyBusy = true;
+    openModal((m) => m.append(h('h3', {}, '\ud83c\udfa4 The Drizzle Room'), h('p', {}, `${comic} taps the mic and looks thoughtful\u2026`)));
+    const t = await aiText('You are a struggling but earnest stand-up comedian at a small comedy club in a rainy Pacific Northwest international district. Write ONE original, family-friendly 3 to 5 sentence bit with a setup and punchline. Observational and a little weird. No real people, no profanity. Reply with only the bit.', [{ role: 'user', content: `Come up with an original comedy bit. Today is day ${state.day}, weather: ${state.weather}. Your name is ${comic}.` }]);
+    comedyBusy = false;
+    if (!modalOpen) return;
+    stage(t ? t.trim().slice(0, 700) : pick(BLAND_BITS), !!t);
+  };
+  next();
+}
+
 function enterVenue(d) {
   if (d.special === 'dojo') return enterDojo();
   if (d.special === 'crystal') return enterCrystalShop();
   if (d.special === 'home') return enterHome();
   if (d.special === 'cellar') return enterCellar();
+  if (d.special === 'comedy') return enterComedy();
   const def = defOf(d.bizId) || {};
   // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
   const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);
