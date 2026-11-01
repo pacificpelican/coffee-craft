@@ -312,8 +312,10 @@ export function buildWorld(scene, defList) {
   function buildBridge() {
     const z = -142;
     const deck = box(300, 1.6, 24, '#6a6e6c', 0, 11, z); add(deck);
-    const barrier = box(300, 0.9, 0.5, '#8a8f8c', 0, 12.2, z - 11.8); add(barrier); add(box(300, 0.9, 0.5, '#8a8f8c', 0, 12.2, z + 11.8));
+    const barrier = box(300, 0.9, 0.5, '#8a8f8c', 0, 12.2, z - 11.8); add(barrier); const barrier2 = box(300, 0.9, 0.5, '#8a8f8c', 0, 12.2, z + 11.8); add(barrier2);
     const sty = box(300, 0.5, 23, '#2f3234', 0, 11.9, z); add(sty);
+    world.bridgeParts = [deck, barrier, barrier2, sty];
+    for (const m of world.bridgeParts) { m.material = m.material.clone(); m.material.transparent = true; }
     for (let x = -140; x <= 140; x += 28) {
       const p = box(2.4, 11, 2.4, '#7a7e7a', x, 5.5, z); add(p); solid(x - 1.3, x + 1.3, z - 1.3, z + 1.3);
       const gr = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 5), new THREE.MeshBasicMaterial({ map: signTexture(THREE, pick(['SASQUATCH WAS HERE', 'FREE KUSAMAKURA', 'RAIN FOREVER', 'TAG 4 LIFE', 'PIGEON POWER']), '#3f4548', pick(['#d9772b', '#e3b93c', '#6f8f4e'])) }));

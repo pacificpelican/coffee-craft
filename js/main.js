@@ -588,6 +588,15 @@ function cutaway(dt) {
     const target = hit ? 0.04 : 1; const g = b.group;
     if (Math.abs(g.scale.y - target) > 0.002) g.scale.y += (target - g.scale.y) * Math.min(1, dt * 8);
   }
+  fadeBridge(dt);
+}
+
+// The highway deck turns see-through while the player is underneath it (e.g. dealing under the bridge).
+function fadeBridge(dt) {
+  const ub = world.underBridge, parts = world.bridgeParts; if (!ub || !parts) return;
+  const under = player.y < 8 && player.x > ub.x0 && player.x < ub.x1 && player.z > ub.z0 && player.z < ub.z1;
+  const target = under ? 0.12 : 1;
+  for (const m of parts) { const mt = m.material; if (Math.abs(mt.opacity - target) > 0.01) { mt.opacity += (target - mt.opacity) * Math.min(1, dt * 6); mt.depthWrite = mt.opacity > 0.9; } else mt.opacity = target; }
 }
 
 boot().catch((e) => { console.error(e); $('#intro-status').textContent = 'Failed to start: ' + e.message; });
