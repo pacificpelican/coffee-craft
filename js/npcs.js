@@ -75,7 +75,8 @@ export function buildNpcs(scene, world, count = 44) {
   });
 
   // ---- animals
-  const spawnAnimal = (kind, x, z) => { const m = makeAnimal(kind); scene.add(m); const a = { kind, mesh: m, x, z, y: 0.2, heading: rand(0, 6), state: 'idle', timer: rand(0, 3), tx: x, tz: z, isAnimal: true, persona: { name: kind === 'pigeon' ? 'a pigeon' : kind === 'gull' ? 'a seagull' : kind === 'raccoon' ? 'a raccoon' : 'a dog', occupation: kind, quirk: '', mood: 'feral' }, fly: 0 }; animals.push(a); return a; };
+  const spawnAnimal = (kind, x, z) => { const m = makeAnimal(kind); scene.add(m); const a = { kind, mesh: m, x, z, y: 0.2, heading: rand(0, 6), state: 'idle', timer: rand(0, 3), tx: x, tz: z, isAnimal: true, persona: { name: kind === 'pigeon' ? 'a pigeon' : kind === 'gull' ? 'a seagull' : kind === 'raccoon' ? 'a raccoon' : kind === 'pelican' ? 'a brown pelican' : 'a dog', occupation: kind, quirk: '', mood: 'feral' }, fly: 0, seed: rand(0, 20) }; animals.push(a); return a; };
+  for (let i = 0; i < 2; i++) { const a = spawnAnimal('pelican', rand(-100, 100), rand(-100, 100)); a.state = 'soar'; a.airborne = true; a.y = 14; }
   for (let i = 0; i < 14; i++) { const n = nodes[Math.floor(Math.random() * nodes.length)]; spawnAnimal('pigeon', n.x + rand(-3, 3), n.z + rand(-3, 3)); }
   for (let i = 0; i < 6; i++) { const n = nodes[Math.floor(Math.random() * nodes.length)]; spawnAnimal('gull', n.x + rand(-3, 3), n.z + rand(-3, 3)); }
   for (let i = 0; i < 5; i++) { const s = pick(world.trashSpots); const a = spawnAnimal('raccoon', s.x, s.z + 1); a.home = s; }
@@ -158,6 +159,31 @@ export function buildNpcs(scene, world, count = 44) {
         const vx = a.tx - a.x, vz = a.tz - a.z, dd = Math.hypot(vx, vz);
         if (dd > 0.2) { a.x += vx / dd * 0.9 * dt; a.z += vz / dd * 0.9 * dt; a.heading = Math.atan2(vx, vz); }
         a.mesh.rotation.x = a.peck ? Math.sin(t * 10 + a.x) * 0.4 : 0;
+      }
+      a.mesh.position.set(a.x, a.y, a.z); a.mesh.rotation.y = a.heading;
+    } else if (a.kind === 'pelican') {
+      const [wl, wr] = a.mesh.userData.wings;
+      const setWings = (ang) => { wl.rotation.z = -ang; wr.rotation.z = ang; };
+      if (a.state === 'perch') {
+        a.airborne = false; a.timer -= dt; setWings(-1.35); a.y = 0.2;
+        if (d2 < 25 && !player.inBuilding) a.timer = Math.min(a.timer, 0);
+        if (a.timer <= 0) { a.state = 'soar'; a.airborne = true; a.lift = 0; a.goal = null; }
+      } else {
+        a.airborne = true; a.lift = Math.min(1, (a.lift || 0) + dt * 0.4);
+        if (!a.goal || Math.hypot(a.goal.x - a.x, a.goal.z - a.z) < 4) {
+          if (a.landing) { a.state = 'perch'; a.landing = false; a.timer = rand(25, 70); a.airborne = false; return; }
+          if (Math.random() < 0.22) { const n = pick(nodes); a.goal = { x: n.x, z: n.z }; a.landing = true; }
+          else a.goal = { x: rand(-130, 130), z: rand(-130, 120) };
+        }
+        const vx = a.goal.x - a.x, vz = a.goal.z - a.z, dd = Math.hypot(vx, vz) || 1;
+        const sp = a.landing && dd < 25 ? 3 : 7;
+        a.x += vx / dd * sp * dt; a.z += vz / dd * sp * dt;
+        const th = Math.atan2(vx, vz); a.heading += angDiff(a.heading, th) * Math.min(1, dt * 1.5);
+        const cruise = 14 + Math.sin(t * 0.3 + a.seed) * 3;
+        const target = a.landing ? Math.min(cruise, 0.2 + dd * 0.45) : cruise;
+        a.y += (Math.max(0.2, target) - a.y) * Math.min(1, dt * 1.2);
+        const glide = Math.sin(t * 0.7 + a.seed) > 0.4;
+        setWings(glide ? 0.12 : Math.sin(t * 5 + a.seed) * 0.6);
       }
       a.mesh.position.set(a.x, a.y, a.z); a.mesh.rotation.y = a.heading;
     } else if (a.kind === 'raccoon') {

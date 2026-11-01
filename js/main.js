@@ -254,7 +254,7 @@ function nearbyTargets() {
   }
   return out.sort((a, b) => a.dist - b.dist);
 }
-const npcNear = (r = 3.2) => nearestOf([...npcSys.list.filter((n) => n.state !== 'inside'), ...npcSys.animals], player.x, player.z, r);
+const npcNear = (r = 3.2) => nearestOf([...npcSys.list.filter((n) => n.state !== 'inside'), ...npcSys.animals.filter((a) => !a.airborne)], player.x, player.z, r);
 
 function handleActions() {
   const e = input.edge; input.edge = {};
@@ -312,7 +312,7 @@ const OFFLINE = {
 };
 async function npcReply(n, msgs, ctx = 'street') {
   const p = n.persona;
-  if (n.isAnimal) return n.kind === 'raccoon' ? '*chitters, clutching a pizza crust*' : n.kind === 'dog' ? '*wags enthusiastically*' : '*coos and eyes your pockets*';
+  if (n.isAnimal) return n.kind === 'raccoon' ? '*chitters, clutching a pizza crust*' : n.kind === 'dog' ? '*wags enthusiastically*' : n.kind === 'pelican' ? '*regards you with ancient pelican dignity, bill pouch sagging*' : '*coos and eyes your pockets*';
   const sys = `You are ${p.name}, ${p.occupation}, in a game set in a rainy, gritty Pacific Northwest international district. Personality: ${p.quirk || p.bio || 'friendly'}. Mood: ${p.mood}. ${n.persona.bio ? 'Bio: ' + n.persona.bio : ''} Weather: ${state.weather}. Reply in 1-2 short sentences, in character, no stage directions. The player runs coffee shops.`;
   const ai = await aiText(sys, msgs.slice(-8));
   n.aiReply = !!ai;

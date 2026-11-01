@@ -129,8 +129,24 @@ export function makeAnimal(kind) {
     const hd = box(0.3, 0.3, 0.3, c); hd.position.set(0, 0.8, 0.4); g.add(hd);
     const tl = box(0.08, 0.08, 0.3, c); tl.position.set(0, 0.7, -0.45); tl.rotation.x = -0.6; g.add(tl);
     for (const x of [-0.12, 0.12]) for (const z of [-0.25, 0.25]) { const l = box(0.1, 0.35, 0.1, c); l.position.set(x, 0.18, z); g.add(l); }
+  } else if (kind === 'pelican') {
+    const c = '#6b5a48';
+    const b = box(0.5, 0.4, 0.9, '#f2f0e6'); b.position.y = 0.55; g.add(b);
+    const nk = box(0.14, 0.4, 0.14, '#f2f0e6'); nk.position.set(0, 0.85, 0.4); nk.rotation.x = -0.35; g.add(nk);
+    const hd = box(0.22, 0.2, 0.24, '#e8d9a0'); hd.position.set(0, 1.05, 0.5); g.add(hd);
+    const bk = box(0.12, 0.1, 0.7, '#d9a05a'); bk.position.set(0, 1.0, 0.95); g.add(bk);
+    const pouch = box(0.1, 0.12, 0.5, '#b8744a'); pouch.position.set(0, 0.9, 0.9); g.add(pouch);
+    const tail = box(0.2, 0.06, 0.4, c); tail.position.set(0, 0.5, -0.6); g.add(tail);
+    for (const x of [-0.12, 0.12]) { const l = box(0.05, 0.3, 0.05, '#4a4a46'); l.position.set(x, 0.15, 0); g.add(l); }
+    const wings = [];
+    for (const s of [-1, 1]) {
+      const pivot = new THREE.Group(); pivot.position.set(s * 0.26, 0.68, 0);
+      const wing = box(1.5, 0.05, 0.55, c); wing.position.x = s * 0.75; pivot.add(wing);
+      const tip = box(0.5, 0.05, 0.4, '#3a3028'); tip.position.x = s * 1.7; pivot.add(tip);
+      g.add(pivot); wings.push(pivot);
+    }
+    g.userData.wings = wings;
   }
-  g.userData.kind = kind;
   return g;
 }
 
