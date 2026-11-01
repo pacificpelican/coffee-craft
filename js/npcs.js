@@ -1,6 +1,6 @@
 // Outdoor NPCs (walkers on a sidewalk graph), pets on leashes, animals.
 import * as THREE from '../vendor/three.module.min.js';
-import { makeHuman, makeSpecial, randomOutfit, animateHuman, makeParrot, makeLeash, updateLeash, makeAnimal } from './actors.js';
+import { makeHuman, makeSpecial, randomOutfit, animateHuman, makeParrot, makePetDog, makeLeash, updateLeash, makeAnimal } from './actors.js';
 import { C } from './world.js';
 import { rand, pick, randInt, angDiff } from './util.js';
 import { DATA } from './data.js';
@@ -53,7 +53,8 @@ export function buildNpcs(scene, world, count = 44) {
     const mesh = makeSpecial(sp.kind);
     const e = spawn({ name: sp.name, occupation: sp.kind === 'spartan' ? 'professional Spartan' : 'local', quirk: sp.bio, bio: sp.bio, mood: 'friendly', priceSens: 0.5 }, mesh, sp.kind);
     if (sp.pet) {
-      const parrot = makeParrot(sp.pet === 'green' ? '#6fb04e' : '#4f8ad0'); scene.add(parrot);
+      const dogPet = sp.pet === 'bloodhound' || sp.pet === 'golden';
+      const parrot = dogPet ? makePetDog(sp.pet) : makeParrot(sp.pet === 'green' ? '#6fb04e' : '#4f8ad0'); scene.add(parrot);
       const leash = makeLeash(); scene.add(leash);
       e.pet = { mesh: parrot, leash, x: e.x, z: e.z, color: sp.pet };
     }

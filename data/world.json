@@ -98,7 +98,9 @@
   "specialNpcs": [
     {"id":"dan","name":"Dan","kind":"dan","bio":"Wears a hoodie, jeans and a ballcap. Walks around with a green Quaker parrot on a leash named Pickle. Easygoing, loves coffee and birds.","pet":"green"},
     {"id":"jes","name":"Jes","kind":"jes","bio":"Lovely, wears pink outfits. Walks around with a blue Quaker parrot on a leash named Bluebell. Warm and cheerful, notices small details.","pet":"blue"},
-    {"id":"spartan","name":"Leonidas Jr.","kind":"spartan","bio":"Always wears a full Spartan hoplite costume with bronze helmet, red cloak and shield. Takes it all very seriously. Dramatic speech. Weirdly polite."}
+    {"id":"spartan","name":"Leonidas Jr.","kind":"spartan","bio":"Always wears a full Spartan hoplite costume with bronze helmet, red cloak and shield. Takes it all very seriously. Dramatic speech. Weirdly polite."},
+    {"id":"tex","name":"Tex","kind":"tex","bio":"A big, broad-shouldered fella in a cowboy hat and boots. Walks around with a bloodhound on a leash named Duke. Slow-talking, friendly, says 'partner' a lot, and Duke is always following his nose.","pet":"bloodhound"},
+    {"id":"jill","name":"Jill","kind":"jill","bio":"A sharp, busy executive who somehow always wears a tracksuit. Walks around with a golden retriever on a leash named Biscuit. Brisk and a little intense, but melts when anyone compliments the dog.","pet":"golden"}
   ],
   "suppliers": {
     "coffee": {

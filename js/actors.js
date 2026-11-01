@@ -59,6 +59,15 @@ export function makeHuman(o) {
   if (o.cloak) { const c = box(0.7, 1.1, 0.06, o.cloak); c.position.set(0, 1.35, -0.28); g.add(c); }
   if (o.shield) { const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.07, 12), mat('#b08a3c')); sh.rotation.z = Math.PI / 2; sh.position.set(-0.52, 1.2, 0.1); sh.rotation.y = 0; g.add(sh); }
   if (o.bag) { const b = box(0.34, 0.3, 0.14, o.bag); b.position.set(0.3, 1.0, 0.26); g.add(b); }
+  if (o.cowboy) {
+    const brim = box(0.82, 0.05, 0.82, '#7a5230'); brim.position.y = 2.24; g.add(brim);
+    const crown = box(0.46, 0.26, 0.46, '#7a5230'); crown.position.y = 2.38; g.add(crown);
+    const band = box(0.48, 0.05, 0.48, '#2b2f2a'); band.position.y = 2.28; g.add(band);
+    const buckle = box(0.14, 0.12, 0.2, '#d9b13c'); buckle.position.set(0, 1.0, 0.1); g.add(buckle);
+    const belt = box(w + 0.02, 0.08, 0.44, '#4a3020'); belt.position.y = 1.0; g.add(belt);
+  }
+  if (o.stripe) { const zip = box(0.06, 0.85, 0.44, o.stripe); zip.position.y = 1.4; g.add(zip); }
+  if (o.bulk) torso.scale.x = o.bulk;
   g.scale.setScalar(s);
   g.userData = { legL, legR, armL, armR, phase: Math.random() * 6 };
   return g;
@@ -76,6 +85,8 @@ export function makeSpecial(kind) {
   if (kind === 'dan') return makeHuman({ ...base, skin: '#e3b890', shirt: '#6a7260', pants: '#4a6a8a', cap: '#2f3b40', hairStyle: 'short', hoodie: true, slim: false, scale: 1.02 });
   if (kind === 'jes') return makeHuman({ ...base, skin: '#f1c9a0', shirt: '#e58aa6', skirt: '#f0a0b8', pants: '#e58aa6', hair: '#c9a45a', hairStyle: 'long', cap: null, slim: true, bag: '#f4d0dc' });
   if (kind === 'spartan') return makeHuman({ ...base, skin: '#d9a27a', shirt: '#b08a3c', skirt: '#8a4a22', skinLegs: true, skinArms: true, helmet: true, cloak: '#c8501f', shield: true, shoes: '#7a5a3c', cap: null, slim: false, scale: 1.08 });
+  if (kind === 'tex') return makeHuman({ ...base, skin: '#d9a27a', shirt: '#a8452f', pants: '#3f5a7a', hair: '#5a3a22', hairStyle: 'short', cowboy: true, shoes: '#5a3a22', slim: false, scale: 1.22, bulk: 1.25 });
+  if (kind === 'jill') return makeHuman({ ...base, skin: '#e8b890', shirt: '#2f2f3a', pants: '#2f2f3a', hair: '#3a2a1e', hairStyle: 'bun', cap: null, shoes: '#f2f0e6', stripe: '#d9b13c', slim: true, scale: 1.02 });
   return makeHuman(base);
 }
 
@@ -91,6 +102,21 @@ export function makeParrot(color) {
   const beak = box(0.05, 0.05, 0.07, '#e3b93c'); beak.position.set(0, 0.4, 0.1); g.add(beak);
   const tail = box(0.07, 0.04, 0.3, color === '#6fb04e' ? '#4f6b3a' : '#2f5a9a'); tail.position.set(0, 0.14, -0.2); tail.rotation.x = 0.3; g.add(tail);
   const belly = box(0.16, 0.14, 0.04, '#c9d9a8'); belly.position.set(0, 0.2, 0.09); g.add(belly);
+  return g;
+}
+
+// Leashed pet dogs: a droopy-eared bloodhound and a fluffy golden retriever.
+export function makePetDog(type) {
+  const g = new THREE.Group();
+  const hound = type === 'bloodhound';
+  const c = hound ? '#a0643a' : '#e0a94a', dark = hound ? '#3a2616' : '#c98a2e', s = hound ? 1.15 : 1.0;
+  const b = box(0.42 * s, 0.42 * s, 0.9 * s, c); b.position.y = 0.55 * s; g.add(b);
+  const hd = box(0.34 * s, 0.34 * s, hound ? 0.46 * s : 0.36 * s, hound ? '#b8794a' : c); hd.position.set(0, 0.85 * s, 0.55 * s); g.add(hd);
+  const nose = box(0.14, 0.12, 0.1, '#1f1a16'); nose.position.set(0, 0.82 * s, (hound ? 0.82 : 0.76) * s); g.add(nose);
+  for (const x of [-1, 1]) { const ear = box(0.07, hound ? 0.42 : 0.26, 0.2, dark); ear.position.set(x * 0.2 * s, (hound ? 0.7 : 0.78) * s, 0.5 * s); g.add(ear); }
+  const tl = box(hound ? 0.07 : 0.14, hound ? 0.07 : 0.14, 0.5, hound ? c : '#f0c36a'); tl.position.set(0, 0.8 * s, -0.55 * s); tl.rotation.x = -0.7; g.add(tl);
+  if (!hound) { const ruff = box(0.4, 0.3, 0.2, '#f0c36a'); ruff.position.set(0, 0.7, 0.32); g.add(ruff); }
+  for (const x of [-0.14, 0.14]) for (const z of [-0.3, 0.3]) { const l = box(0.1, 0.38 * s, 0.1, hound ? '#c08a5a' : c); l.position.set(x * s, 0.19 * s, z * s); g.add(l); }
   return g;
 }
 

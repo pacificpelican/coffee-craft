@@ -373,6 +373,8 @@ async function npcReply(n, msgs, ctx = 'street') {
   if (ai) return ai.replace(/\s+/g, ' ').slice(0, 300);
   if (p.name === 'Dan') return pick(['Pickle says hi. Well, he screams hi.', 'Green parrot, big opinions. You get used to it.']);
   if (p.name === 'Jes') return pick(['Bluebell loves pink. So do I, obviously.', 'Isn’t the light nice through all this cloud?']);
+  if (p.name === 'Tex') return pick(['Howdy, partner. Duke caught a scent, so we\u2019re on a schedule he decides.', 'Mighty fine coffee weather. Damp, but fine.', 'Don\u2019t mind Duke\u2019s nose. He\u2019s just reading the news.']);
+  if (p.name === 'Jill') return pick(['Biscuit, heel. Sorry\u2014I have a call in four minutes. Yes, he\u2019s very good.', 'Do you do a morning rush discount? Asking for my calendar.', 'He\u2019s a golden retriever. He\u2019s legally required to love everyone.']);
   if (p.name === 'Sifu Wen') return pick(['The rain does not hurry, yet the gutters fill.', 'Drink your tea. The mat will wait.', 'A calm mind reads the kick before it leaves the hip.']);
   if (n.kind === 'spartan') return pick(['THIS. IS. A REALLY GOOD SCONE.', 'I fight only in the rain. Tonight, I eat noodles.']);
   if (n.kind === 'dealer') return pick(['…keep your voice down.', 'Quiet night. Interested, or just looking?']);

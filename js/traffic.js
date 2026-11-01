@@ -4,7 +4,7 @@ import { makeVehicle, makeStreetcar, mat } from './actors.js';
 import { R, C } from './world.js';
 import { rand, pick, angDiff, clamp, lerp } from './util.js';
 
-const LANE = { car: 2.5, bus: 2.7, motorcycle: 3.6, bicycle: 4.2, scooter: 4.4 };
+const LANE = { car: 2.5, bus: 2.7, motorcycle: 2.6, bicycle: 2.8, scooter: 2.8 };
 const SPEED = { car: [7, 11], bus: [5, 7], motorcycle: [9, 13], bicycle: [3, 4.5], scooter: [4, 6] };
 
 export function buildTraffic(scene, world) {
@@ -92,7 +92,7 @@ export function buildTraffic(scene, world) {
       a.v += clamp(target - a.v, -12 * dt, 4 * dt);
       const prev = a.p; a.p += a.dir * a.v * dt;
       for (const n of R) {
-        if ((prev - n) * (a.p - n) < 0 || a.p === n) { turn(a, n); break; }
+        if ((prev - n) * (a.p - n) < 0 || (a.p === n && a.v > 0 && prev !== n)) { turn(a, n); break; }
       }
       a.p = clamp(a.p, -124, 124);
       const th = headingOf(a); a.h += angDiff(a.h, th) * Math.min(1, dt * 4);
