@@ -11,7 +11,7 @@ const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
   ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
-const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
+const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
 export function createPhone(G) {
   const root = document.getElementById('phone');
@@ -120,7 +120,7 @@ export function createPhone(G) {
   function settings(el) {
     el.append(h('div', { class: 'tabs' }, ...TABS.map((t) => h('button', { class: t === tab ? 'on' : '', onclick: () => { tab = t; render(); } }, t + (t === 'Bank' && S().bank.decisions.length ? ` (${S().bank.decisions.length})` : '')))));
     const body = h('div'); el.append(body);
-    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Controls: tControls, Roasts: tRoasts, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
+    ({ Account: tAccount, Stats: tStats, Diary: tDiary, Purchases: tPurchases, Bank: tBank, Business: tBusiness, TOWS: tTows, Debug: tDebug, Controls: tControls, Roasts: tRoasts, Credits: tCredits, Terms: tTerms, Privacy: tPrivacy })[tab](body);
   }
   const kv = (k, v) => h('div', { class: 'kv' }, h('span', {}, k), h('b', {}, String(v)));
 
@@ -145,7 +145,7 @@ export function createPhone(G) {
 
   function tStats(el) {
     const s = S(), own = eco.ownedBusinesses(s);
-    el.append(kv('Day', s.day), kv('Time', fmtClock(s.minutes)), kv('Weather', s.weather), kv('Bank cash', money(s.bank.cash)), kv('Community reputation', Math.round(s.rep)), kv('Police scrutiny', Math.round(s.scrutiny)), kv('Points', Math.round(s.points)), kv('Donut shops unlocked', eco.donutUnlocked(s) ? 'yes' : `at ${eco.DONUT_UNLOCK_POINTS} pts`), kv('Unique foods tried', s.diary.length), kv('Roasts unlocked', s.roastsUnlocked.length), kv('Martial arts belt', ['White', 'Yellow', 'Green', 'Brown', 'Black'][Math.min(4, Math.floor((s.dojo?.wins || 0) / 2))]), kv('Town mood', s.townMood || '—'));
+    el.append(kv('Day', s.day), kv('Time', fmtClock(s.minutes)), kv('Weather', s.weather), kv('Bank cash', money(s.bank.cash)), kv('Community reputation', Math.round(s.rep)), kv('Police scrutiny', Math.round(s.scrutiny)), kv('Points', Math.round(s.points)), kv('Donut shops unlocked', eco.donutUnlocked(s) ? 'yes' : `at ${eco.DONUT_UNLOCK_POINTS} pts`), kv('Unique foods tried', s.diary.length), kv('Unique products bought', (s.purchases || []).length), kv('Roasts unlocked', s.roastsUnlocked.length), kv('Martial arts belt', ['White', 'Yellow', 'Green', 'Brown', 'Black'][Math.min(4, Math.floor((s.dojo?.wins || 0) / 2))]), kv('Town mood', s.townMood || '—'));
     el.append(h('h4', {}, 'Your businesses'));
     for (const b of own) el.append(h('details', {}, h('summary', {}, `${b.name} (${b.type})`), kv('Visitors (total/today)', `${b.totalVisitors} / ${b.dayVisitors}`), kv('Revenue (total/today)', `${money(b.totalRevenue)} / ${money(b.dayRevenue)}`), kv('Reputation', Math.round(b.reputation)), kv('Buzz', Math.round(b.buzz)), kv('Property', money(b.propertyValue)), kv('Inventory', money(b.inventoryValue)), kv('Savings', money(b.savings)), kv('Debt', money(b.debt))));
     if (eco.needsBailout(s)) el.append(h('hr'), h('p', {}, 'Funds are low.'), h('button', { class: 'btn warn', onclick: () => bailoutUI() }, '🆘 Bailout'));
@@ -154,6 +154,17 @@ export function createPhone(G) {
     const max = eco.bailoutMax(S());
     const v = prompt(`Request a government loan (up to ${money(max)}). You never have to pay it back.`, String(Math.round(max / 4)));
     if (v == null) return; const amt = eco.bailout(S(), Number(v) || 0); G.notify(`Government loan of ${money(amt)} received.`); render();
+  }
+
+  function tPurchases(el) {
+    const d = S().purchases || [];
+    if (!d.length) return el.append(h('p', {}, 'Nothing here yet. Buy something at a convenience store, pharmacy, pet shop or electronics shop!'));
+    const src = (p) => { const a = S().itemArt?.[p.name]; return a ? svgURI(a) : svgURI(foodSVG(p.kind || 'platter')); };
+    const total = d.reduce((n, p) => n + p.count, 0);
+    const g = h('div', { class: 'diary' });
+    for (const p of d) g.append(h('div', { class: 'bizcard' }, h('img', { src: src(p), alt: p.name }), h('b', {}, p.name), h('div', { class: 'small' }, `${p.where} · day ${p.day}${p.count > 1 ? ` · ×${p.count}` : ''}`)));
+    el.append(h('p', { class: 'small' }, `${d.length} unique product${d.length === 1 ? '' : 's'} collected · ${total} bought in all`), g,
+      h('button', { class: 'btn alt', title: 'Print or save your purchases as PDF', onclick: () => G.printSheet('purchases', `Purchases — ${d.length} unique product${d.length === 1 ? '' : 's'} collected`, [h('div', { style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px' }, ...d.map((p) => h('div', { style: 'text-align:center;break-inside:avoid' }, h('img', { src: src(p), alt: p.name, style: 'width:100%;max-width:150px' }), h('div', {}, h('b', {}, p.name)), h('div', { style: 'font-size:12px' }, `${p.where} · day ${p.day}${p.count > 1 ? ` · ×${p.count}` : ''}`))))]) }, '🖨 Print / PDF'));
   }
 
   function tDiary(el) {

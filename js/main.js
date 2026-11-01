@@ -3,6 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { DATA, loadData } from './data.js';
 import { server, initServer, account, aiText, aiJson } from './api.js';
 import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
+import { stockFor } from './stock.js';
 import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS, kindFor, sanitizeSVG } from './art.js';
 import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel } from './audio.js';
 import * as eco from './economy.js';
@@ -482,7 +483,10 @@ function enterVenue(d) {
       c.append(h('p', { class: 'small' }, 'You take a seat. Tap an item to look at it.'), h('div', { class: 'menu-items' }, ...menu.map((it) => h('div', { class: 'menu-item', onclick: () => foodModal(b, it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(G.price(b, it[1])))))));
     }
     if (def.items) {
-      c.append(h('div', { class: 'menu-items' }, ...def.items.map((it) => h('div', { class: 'menu-item', onclick: () => buyItem(b, it) }, itemImg(it[0], it[2]), h('b', {}, it[0]), h('div', {}, money(it[1]))))));
+      const list = h('div', { class: 'menu-items' });
+      const draw = () => { list.replaceChildren(...stockFor(def, state.day, (state.extraItems ||= {})[b.id]).map((it) => h('div', { class: 'menu-item', onclick: () => buyItem(b, it) }, itemImg(it[0], it[2]), h('b', {}, it[0]), h('div', {}, money(it[1]))))); };
+      draw(); c.append(list);
+      aiNewArrival(b, def, () => { if (list.isConnected) draw(); });
     }
     if (t === 'lab') c.append(h('p', {}, 'Roasters, espresso machines, a smell of burnt sugar.'), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => openModal((cc) => playRoaster(cc, G_mini(), closeModal)) }, '🔥 Use roaster'), h('button', { class: 'btn alt', onclick: () => openModal((cc) => playEspresso(cc, G_mini(), closeModal)) }, '☕ Espresso machine')));
     if (t === 'hotel') c.append(h('p', {}, '“Welcome to Hotel Bogey. Need a room?” the front desk person asks. On the wall: an ink-and-watercolor bird.'), h('img', { src: 'assets/art/art1.jpg', style: 'width:100%;max-height:160px;object-fit:cover;border-radius:10px' }), h('button', { class: 'btn', onclick: () => sleep(b) }, `🛏 Check in & sleep ($${Math.round(120 * 1)})`));
@@ -497,8 +501,30 @@ function buyItem(b, it) {
   if (state.bank.cash < it[1]) return notify('Not enough funds.');
   if (it[2] === 'drone' || it[2] === 'camera') { if (state.owns[it[2]]) return notify('You already own that.'); state.owns[it[2]] = true; notify(it[2] === 'drone' ? '🚁 Drone owned: new screenshot option!' : '📷 Vintage camera: B&W screenshots!'); }
   state.bank.cash -= it[1]; sfx('coin');
+  const log = (state.purchases ||= []);
+  const rec = log.find((p) => p.name === it[0]);
+  if (rec) rec.count++; else { log.push({ name: it[0], kind: kindFor(it[0], it[2]) || null, where: b.name, day: state.day, count: 1 }); notify(`🛍 New for your Purchases: ${it[0]}`, { sound: false }); }
   if (it[2] === 'weed_good') { state.buzzed = { type: 'good', until: state.minutes + 120 }; notify('Colors look… a little weird.', { sound: false }); }
   else if (!state.owns[it[2]]) notify(`Bought ${it[0]}.`, { sound: false });
+}
+// With AI on, a shop may stock one new invented product per day (up to 6 per shop), kept in the save.
+const aiStockPending = new Set();
+function aiNewArrival(b, def, done) {
+  if (!server.ai || aiStockPending.has(b.id)) return;
+  const extras = (state.extraItems ||= {})[b.id] ||= [];
+  const seen = (state.aiStockDay ||= {});
+  if (seen[b.id] === state.day || extras.length >= 6) return;
+  aiStockPending.add(b.id);
+  const have = stockFor(def, state.day, extras).map((i) => i[0]).join(', ');
+  aiJson('You invent fun, collectible, family-friendly products for small shops in a cozy rainy Seattle-style neighborhood game.',
+    `Shop: ${b.name} (${b.type}). Already stocked: ${have}. Invent ONE new product that fits this shop and is not on that list. Reply as {"name":"2-4 words","price":number,"desc":"one short sentence"}. Price between 2 and 40.`).then((r) => {
+    const j = Array.isArray(r) ? r[0] : r;
+    const name = String(j?.name || '').replace(/[<>"]/g, '').trim().slice(0, 32);
+    const price = Math.max(2, Math.min(60, Math.round(Number(j?.price) || 0)));
+    if (!name || !price || have.toLowerCase().includes(name.toLowerCase())) return;
+    extras.push([name, price, undefined, String(j.desc || '').replace(/[<>]/g, '').slice(0, 120)]);
+    seen[b.id] = state.day; notify(`✨ New at ${b.name}: ${name}`, { sound: false }); done();
+  }).catch(() => {}).finally(() => aiStockPending.delete(b.id));
 }
 function sleep(b) {
   if (state.bank.cash < 120) return notify('Not enough funds.');
