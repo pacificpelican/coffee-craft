@@ -394,7 +394,16 @@ function dealerMenu() {
     state.bank.cash -= cost; state.scrutiny += 3; sfx('rustle');
     state.buzzed = { type: what, until: state.minutes + 90 }; notify(what === 'booze' ? 'You feel wobbly…' : 'Meh. It hits sideways. You wobble.', { sound: false });
   };
-  return h('div', { class: 'bizcard' }, h('b', {}, 'Street deal (▶️)'), h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: buy('booze', 20) }, 'Sketchy booze $20'), h('button', { class: 'btn warn', onclick: buy('street', 15) }, 'Street weed $15')));
+  const fragment = () => {
+    const price = 12;
+    if (state.bank.cash < price) return notify('Not enough funds.');
+    state.bank.cash -= price; state.scrutiny += 2; sfx('rustle');
+    const name = 'Crystal Fragment';
+    const log = (state.purchases ||= []), rec = log.find((p) => p.name === name);
+    if (rec) rec.count++; else { log.push({ name, kind: 'xtal:shard:#7fd6c8', where: 'Under the highway', day: state.day, count: 1 }); notify(`🛍 New for your Purchases: ${name}`, { sound: false }); }
+    notify(pick(['“Genuine. Probably.” It might be glass.', '“Fell off a… geode.” It glows a little. Maybe.', '“Don’t ask where it’s from.” It is warm to the touch.', 'A shard of something. It hums faintly, or that is the highway.']), { sound: false });
+  };
+  return h('div', { class: 'bizcard' }, h('b', {}, 'Street deal (▶️)'), h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: buy('booze', 20) }, 'Sketchy booze $20'), h('button', { class: 'btn warn', onclick: buy('street', 15) }, 'Street weed $15'), h('button', { class: 'btn warn', onclick: fragment }, '💎 “Crystal fragment” $12')));
 }
 
 // ----------------------------------------------------------- venues
