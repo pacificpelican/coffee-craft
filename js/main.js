@@ -509,8 +509,7 @@ function tick(dt) {
   state.day = Math.floor(state.minutes / 1440) + 1;
   eco.advance(state, dt * 2);
   state.weather = env.weather;
-  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow);
-  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
+  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
   traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();

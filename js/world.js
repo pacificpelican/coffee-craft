@@ -249,7 +249,36 @@ export function buildWorld(scene, defList) {
   buildGate();
   buildBillboards();
   buildSkyline();
+  buildCanal();
   buildScooters();
+
+  function buildCanal() {
+    const x0 = -134, x1 = -176, zc = -9, len = 330;
+    const tex = canvasTex(128, 128, (g, w, h) => {
+      g.fillStyle = '#4d7480'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(${rnd() < 0.5 ? '210,235,240' : '20,50,60'},${0.12 + rnd() * 0.2})`; g.lineWidth = 1 + rnd() * 1.5; const x = rnd() * w, y = rnd() * h, l = 8 + rnd() * 22; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 3, x + l, y); g.stroke(); }
+    }, THREE, true);
+    tex.repeat.set(8, 60);
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(x0 - x1, len), new THREE.MeshLambertMaterial({ map: tex, transparent: true, opacity: 0.92 }));
+    water.rotation.x = -Math.PI / 2; water.position.set((x0 + x1) / 2, 0.04, zc); add(water);
+    world.water = { tick: (dt) => { tex.offset.y += dt * 0.012; tex.offset.x += dt * 0.004; } };
+    // concrete quay lip, railing and bollards along the playable edge
+    add(box(2, 0.5, len, '#8c9290', x0 + 1, 0.25, zc));
+    add(box(0.12, 0.12, len, '#2b2f2a', x0 + 1.6, 1.15, zc));
+    for (let z = zc - len / 2 + 2; z < zc + len / 2; z += 6) {
+      add(box(0.14, 1.1, 0.14, '#2b2f2a', x0 + 1.6, 0.6, z));
+      if (Math.round((z - zc) / 6) % 4 === 0) { const l = box(0.2, 3.2, 0.2, '#25292a', x0 + 1.6, 1.8, z); add(l); const bulb = box(0.5, 0.35, 0.5, '#9a9a80', x0 + 1.6, 3.5, z); world.lamps.push(bulb); add(bulb); }
+    }
+    // far bank wall
+    add(box(3, 3, len, '#6b7270', x1 - 1.5, 1.5, zc));
+    // moored boats
+    for (const [z, c] of [[-70, '#d9772b'], [-8, '#2f5a3a'], [52, '#e3b93c'], [101, '#3b4a52']]) {
+      const b = new THREE.Group();
+      b.add(box(2.6, 0.7, 7, c, 0, 0.3, 0)); b.add(box(1.8, 0.9, 2.6, '#e9e0c8', 0, 1.1, -0.6));
+      b.position.set(x0 - 3.6, 0.04, z); add(b);
+    }
+    world.solid(x0 - 0.4, x1, zc - len / 2, zc + len / 2, 99);
+  }
 
   function buildPark() {
     const { bx, bz } = PARK;
