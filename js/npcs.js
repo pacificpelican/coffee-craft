@@ -127,7 +127,17 @@ export function buildNpcs(scene, world, count = 44) {
         pickTarget(e);
       } else {
         e.x += (vx / dist) * spd * dt; e.z += (vz / dist) * spd * dt;
-        if (world.pushVehicles) [e.x, e.z] = world.pushVehicles(e.x, e.z, 0.4);
+        if (world.pushVehicles) {
+          const [px, pz] = world.pushVehicles(e.x, e.z, 0.4);
+          const ox = px - e.x, oz = pz - e.z, om = Math.hypot(ox, oz);
+          if (om > 1e-4) {
+            // slide along the vehicle's surface toward the goal instead of grinding into it
+            let tx2 = -oz / om, tz2 = ox / om; if (tx2 * vx + tz2 * vz < 0) { tx2 = -tx2; tz2 = -tz2; }
+            [e.x, e.z] = world.pushVehicles(px + tx2 * spd * dt * 1.2, pz + tz2 * spd * dt * 1.2, 0.4);
+            e.blockedT = (e.blockedT || 0) + dt;
+            if (e.blockedT > 2) { e.blockedT = 0; e.target = null; e.goDoor = false; e.parkGoal = null; pickTarget(e); }
+          } else e.blockedT = Math.max(0, (e.blockedT || 0) - dt);
+        }
         const th = Math.atan2(vx, vz); e.heading += angDiff(e.heading, th) * Math.min(1, dt * 8);
       }
       if (!e.mesh.visible && e.state !== 'inside') { e.mesh.visible = true; if (e.pet) e.pet.mesh.visible = e.pet.leash.visible = true; }
