@@ -196,6 +196,34 @@ export function buildEnvironment(scene, renderer) {
   rain.visible = false; rain.frustumCulled = false; scene.add(rain);
 
   const env = { weather: 'cloudy', weatherTimer: 0, light: 1, hemi, sun, rain, rainOn: false, night: 0 };
+
+  // light curtains at the map edges: aurora-like blues in the north, pinks in the south
+  const curtainMat = (c1, c2, seed) => new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { uT: { value: 0 }, uI: { value: 0.5 }, uC1: { value: new THREE.Color(c1) }, uC2: { value: new THREE.Color(c2) }, uS: { value: seed } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `varying vec2 vUv; uniform float uT, uI, uS; uniform vec3 uC1, uC2;
+      void main(){
+        float x = vUv.x * 14.0 + uS;
+        float wave = sin(x + uT * 0.5) * 0.5 + sin(x * 2.3 - uT * 0.8) * 0.3 + sin(x * 5.1 + uT * 1.3) * 0.2;
+        float edge = 0.55 + wave * 0.18;
+        float streak = 0.55 + 0.45 * sin(vUv.x * 120.0 + sin(vUv.x * 17.0 + uT) * 3.0);
+        float body = smoothstep(0.0, 0.08, vUv.y) * (1.0 - smoothstep(edge - 0.35, edge, vUv.y));
+        float side = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+        vec3 col = mix(uC1, uC2, clamp(vUv.y * 1.6 + wave * 0.3, 0.0, 1.0));
+        gl_FragColor = vec4(col * body * streak * side * uI, 1.0);
+      }`,
+  });
+  const curtains = [];
+  const mkCurtain = (z, rotY, c1, c2, seed, x = 0, w = 320) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, 110), curtainMat(c1, c2, seed));
+    m.position.set(x, 55, z); m.rotation.y = rotY; m.frustumCulled = false; m.renderOrder = 5; scene.add(m); curtains.push(m);
+  };
+  mkCurtain(-160, 0, '#2a7bff', '#8a4dff', 0);
+  mkCurtain(-168, 0, '#19e0c8', '#3a6bff', 3.7);
+  mkCurtain(144, Math.PI, '#ff4fa8', '#ffb06a', 1.9);
+  mkCurtain(152, Math.PI, '#d03cff', '#ff6f9a', 5.1);
+  env.curtains = curtains;
   const cSky = { cloudy: new THREE.Color('#a9b8bc'), sun: new THREE.Color('#bcd9dc'), rain: new THREE.Color('#8a979a') };
   const night = new THREE.Color('#34424f');
   const tmp = new THREE.Color();
@@ -206,6 +234,7 @@ export function buildEnvironment(scene, renderer) {
     let dark = 0;
     if (hour >= 20 || hour < 5) dark = 1; else if (hour >= 18) dark = (hour - 18) / 2; else if (hour < 7) dark = 1 - (hour - 5) / 2;
     env.night = dark;
+    for (const c of curtains) { c.material.uniforms.uT.value += dt; c.material.uniforms.uI.value = 0.9 + dark * 1.3; }
     const k = env.weather === 'sun' ? 1 : env.weather === 'rain' ? 0.72 : 0.84;
     tmp.copy(cSky[env.weather]).lerp(night, dark * 0.55);
     scene.background.copy(tmp); scene.fog.color.copy(tmp);
