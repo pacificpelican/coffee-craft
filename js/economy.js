@@ -244,7 +244,9 @@ function requestLoan(state, b) {
 function bankrupt(state, b) {
   b.state = 'bankrupt';
   emit('news', { text: `${b.name} files for bankruptcy.`, bizId: b.id, kind: 'bad' });
-  const dec = { id: decId++ + '_' + state.day, type: 'bankrupt', bizId: b.id, amount: b.debt, lender: b.lender === 'player' ? 'player' : 'indie', day: state.day };
+  // Whoever holds the loan decides; if nobody does, the player's bank gets first refusal most of the time.
+  const lender = b.lender === 'player' ? 'player' : b.lender === 'indie' ? 'indie' : (Math.random() < 0.65 ? 'player' : 'indie');
+  const dec = { id: decId++ + '_' + state.day, type: 'bankrupt', bizId: b.id, amount: b.debt, lender, day: state.day };
   if (dec.lender === 'player') queueDecision(state, dec); else decideIndie(state, dec);
 }
 
