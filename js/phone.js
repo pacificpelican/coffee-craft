@@ -9,7 +9,7 @@ import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -31,7 +31,7 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
@@ -44,6 +44,36 @@ export function createPhone(G) {
     const card = h('div', { class: 'pickle-app' });
     el.append(card);
     playPickleball(card, { state: S(), notify: G.notify, sfx, aiText, server }, () => { app = null; render(); });
+  }
+
+  // ------------------------------------------------------------ Map
+  function mapApp(el) {
+    const { world, player, tram } = G.mapInfo();
+    const R = [-124, -62, 0, 62, 124];
+    const X0 = -182, X1 = 140, Z0 = -162, Z1 = 140;
+    const e = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const pb = world.parkBounds, line = [[-62, -62], [0, -62], [0, 0], [124, 0], [124, 62], [-62, 62]];
+    const svg = `<svg viewBox="${X0} ${Z0} ${X1 - X0} ${Z1 - Z0}" xmlns="http://www.w3.org/2000/svg" class="mapsvg">
+      <rect x="${X0}" y="${Z0}" width="${X1 - X0}" height="${Z1 - Z0}" fill="#d8d2bd"/>
+      <rect x="-176" y="${Z0}" width="42" height="${Z1 - Z0}" fill="#6f9aa8"/>
+      <rect x="-134" y="-150" width="266" height="282" fill="#bdb7a3"/>
+      ${R.map((r) => `<rect x="${r - 6}" y="-150" width="12" height="282" fill="#5b6266"/><rect x="-134" y="${r - 6}" width="266" height="12" fill="#5b6266"/>`).join('')}
+      <rect x="-134" y="-154" width="266" height="24" fill="#3a4044" opacity=".55"/>
+      ${pb ? `<rect x="${pb.x0}" y="${pb.z0}" width="${pb.x1 - pb.x0}" height="${pb.z1 - pb.z0}" fill="#7da35a" stroke="#4f7a3a" stroke-width="1.5"/><text x="${(pb.x0 + pb.x1) / 2}" y="${(pb.z0 + pb.z1) / 2}" class="mt" text-anchor="middle">Baloo's Park</text>` : ''}
+      <polyline points="${line.map((p) => p.join(',')).join(' ')} ${line[0].join(',')}" fill="none" stroke="#d9772b" stroke-width="2.4" stroke-dasharray="6 3"/>
+      ${world.doors.map((d) => `<circle cx="${d.x}" cy="${d.z}" r="2.2" fill="#8a4b2a"><title>${e(d.label)}</title></circle>`).join('')}
+      ${tram.stops.map((s) => `<g><circle cx="${s.sx}" cy="${s.sz}" r="4.5" fill="#d9772b" stroke="#fff" stroke-width="1.2"/><text x="${s.sx}" y="${s.sz - 6}" class="mt" text-anchor="middle">${e(s.name)}</text></g>`).join('')}
+      ${world.gate ? `<text x="${world.gate.x}" y="${world.gate.z}" class="mt" text-anchor="middle">⛩ Gate</text>` : ''}
+      <text x="-155" y="0" class="mt" text-anchor="middle" fill="#fff" transform="rotate(-90 -155 0)">canal</text>
+      <text x="0" y="-139" class="mt" text-anchor="middle" fill="#fff">interstate</text>
+      <text x="${X1 - 22}" y="${Z0 + 12}" class="mt" font-size="14">N↑</text>
+      <g id="mapPin"><circle r="9" fill="#d03c4a" opacity=".25"><animate attributeName="r" values="5;13;5" dur="1.6s" repeatCount="indefinite"/></circle><circle r="4.5" fill="#d03c4a" stroke="#fff" stroke-width="1.6"/></g>
+    </svg>`;
+    const wrap = h('div', { class: 'mapwrap', html: svg });
+    el.append(h('h3', {}, '🗺️ Map'), h('p', { class: 'small' }, '📍 You are here · 🟠 streetcar line and stops · brown dots are places you can enter (tap one for its name).'), wrap);
+    const pin = wrap.querySelector('#mapPin');
+    const place = () => pin.setAttribute('transform', `translate(${player.x.toFixed(1)} ${player.z.toFixed(1)})`);
+    const tm = setInterval(() => { if (!pin.isConnected) return clearInterval(tm); place(); }, 400); place();
   }
 
   // ------------------------------------------------------------ Ask AI

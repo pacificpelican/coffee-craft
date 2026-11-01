@@ -43,6 +43,7 @@ const G = {
   price: (b, base) => Math.round(base * tierMult(b)),
   menuFor: (b) => (b.generic ? b.newMenu : defOf(b.id)?.menu) || [],
   snapshot: () => ({ state, player: { x: player.x, z: player.z } }),
+  mapInfo: () => ({ world, player, tram: tramSys.tram }),
   aiText,
   restore: (sv) => { Object.assign(state, sv.state); if (state.musicChannel) setChannel(state.musicChannel); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
