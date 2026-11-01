@@ -3,7 +3,7 @@ import { h, money, esc, fmtClock } from './util.js';
 import { DATA } from './data.js';
 import { server, account, aiText, aiJson } from './api.js';
 import * as eco from './economy.js';
-import { LOGO_SVG, foodSVG, svgURI, bagSVG } from './art.js';
+import { LOGO_SVG, foodSVG, svgURI, bagSVG, kindFor } from './art.js';
 import { getChannel, setChannel, sfx } from './audio.js';
 import { playPickleball } from './minigames.js';
 
@@ -156,10 +156,12 @@ export function createPhone(G) {
     if (v == null) return; const amt = eco.bailout(S(), Number(v) || 0); G.notify(`Government loan of ${money(amt)} received.`); render();
   }
 
+  // Same lookup as the shops: tagged/keyword icon, else a cached AI drawing, else the platter.
+  const src = (p) => { const k = kindFor(p.name, p.kind); const a = S().itemArt?.[p.name]; return svgURI(k ? foodSVG(k) : a || foodSVG('platter')); };
+
   function tPurchases(el) {
     const d = S().purchases || [];
     if (!d.length) return el.append(h('p', {}, 'Nothing here yet. Buy something at a convenience store, pharmacy, pet shop or electronics shop!'));
-    const src = (p) => { const a = S().itemArt?.[p.name]; return a ? svgURI(a) : svgURI(foodSVG(p.kind || 'platter')); };
     const total = d.reduce((n, p) => n + p.count, 0);
     const g = h('div', { class: 'diary' });
     for (const p of d) g.append(h('div', { class: 'bizcard' }, h('img', { src: src(p), alt: p.name }), h('b', {}, p.name), h('div', { class: 'small' }, `${p.where} · day ${p.day}${p.count > 1 ? ` · ×${p.count}` : ''}`)));
@@ -171,8 +173,8 @@ export function createPhone(G) {
     const d = S().diary;
     if (!d.length) return el.append(h('p', {}, 'Nothing here yet. Order something at a café, restaurant or pub!'));
     const g = h('div', { class: 'diary' });
-    for (const f of d) g.append(h('div', { class: 'bizcard' }, h('img', { src: svgURI(foodSVG(f.kind)), alt: f.name }), h('b', {}, f.name), h('div', { class: 'small' }, f.where + ' · day ' + f.day)));
-    el.append(g, h('button', { class: 'btn alt', title: 'Print or save your food diary as PDF', onclick: () => G.printSheet('food_diary', `Food diary — ${d.length} item${d.length === 1 ? '' : 's'} tried`, [h('div', { style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px' }, ...d.map((f) => h('div', { style: 'text-align:center;break-inside:avoid' }, h('img', { src: svgURI(foodSVG(f.kind)), alt: f.name, style: 'width:100%;max-width:150px' }), h('div', {}, h('b', {}, f.name)), h('div', { style: 'font-size:12px' }, `${f.where} · day ${f.day}`))))]) }, '🖨 Print / PDF'));
+    for (const f of d) g.append(h('div', { class: 'bizcard' }, h('img', { src: src(f), alt: f.name }), h('b', {}, f.name), h('div', { class: 'small' }, f.where + ' · day ' + f.day)));
+    el.append(g, h('button', { class: 'btn alt', title: 'Print or save your food diary as PDF', onclick: () => G.printSheet('food_diary', `Food diary — ${d.length} item${d.length === 1 ? '' : 's'} tried`, [h('div', { style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px' }, ...d.map((f) => h('div', { style: 'text-align:center;break-inside:avoid' }, h('img', { src: src(f), alt: f.name, style: 'width:100%;max-width:150px' }), h('div', {}, h('b', {}, f.name)), h('div', { style: 'font-size:12px' }, `${f.where} · day ${f.day}`))))]) }, '🖨 Print / PDF'));
       }
 
       // ------------------------------------------------------------ Bank
