@@ -347,11 +347,14 @@ export function createPhone(G) {
       el.append(h('button', { class: 'btn alt', title: 'Print or save this conversation as PDF', onclick: () => G.printSheet('chat', `Text conversation with ${chatWith}`, msgs.map((m) => h('p', {}, h('b', {}, (m.me ? 'You' : chatWith) + ': '), m.text + (m.ai ? ' [AI]' : '')))) }, '🖨 Print / PDF'));
       if (blocked) return el.append(h('p', { class: 'small' }, 'Blocked: unblock to message again.'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
       const inp = h('input', { placeholder: 'message…', style: 'width:70%' });
-      el.append(inp, h('button', { class: 'btn', onclick: async () => {
+      const send = async () => {
         if (!inp.value.trim()) return; (s.chats[chatWith] ||= []).push({ me: true, text: inp.value });
-        const t = inp.value; inp.value = ''; render();
-        const reply = await G.npcReply(chatWith, t); (s.chats[chatWith] ||= []).push(G.lastAi ? { text: reply, ai: true } : { text: reply }); render();
-      } }, 'Send'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
+        const t = inp.value, who = chatWith; inp.value = ''; render();
+        const reply = await G.npcReply(who, t); (s.chats[who] ||= []).push(G.lastAi ? { text: reply, ai: true } : { text: reply }); if (chatWith === who) render();
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } e.stopPropagation(); });
+      el.append(inp, h('button', { class: 'btn', onclick: send }, 'Send'), h('button', { class: 'btn alt', onclick: () => { chatWith = null; render(); } }, 'Contacts'));
+      setTimeout(() => inp.focus(), 0);
       return;
     }
     el.append(h('h3', {}, '💬 Chat'));
