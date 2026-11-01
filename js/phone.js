@@ -9,7 +9,7 @@ import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -31,7 +31,7 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
@@ -44,6 +44,46 @@ export function createPhone(G) {
     const card = h('div', { class: 'pickle-app' });
     el.append(card);
     playPickleball(card, { state: S(), notify: G.notify, sfx, aiText, server }, () => { app = null; render(); });
+  }
+
+  // ------------------------------------------------------------ Ask AI
+  const askLog = []; let askBusy = false;
+  const SPIN_CAPTIONS = ['Warming up the neural espresso machine…', 'Calibrating the grind of the language model…', 'Searching for a signal in the rain…', 'Tamping down some tokens…', 'Waiting for the AI to wake up…', 'Looking for an AI API to chat with…'];
+  function spinner(small) {
+    const wrap = h('div', { class: 'orb-wrap' + (small ? ' small' : '') },
+      h('div', { class: 'orb' },
+        h('div', { class: 'ring r1' }), h('div', { class: 'ring r2' }), h('div', { class: 'ring r3' }),
+        h('div', { class: 'orbit o1' }, h('i', {})), h('div', { class: 'orbit o2' }, h('i', {})), h('div', { class: 'orbit o3' }, h('i', {})),
+        h('div', { class: 'core' }, '☕')));
+    if (!small) {
+      const cap = h('div', { class: 'orb-cap small' }, SPIN_CAPTIONS[0]); wrap.append(cap);
+      let i = 0; const tm = setInterval(() => { if (!cap.isConnected) return clearInterval(tm); cap.textContent = SPIN_CAPTIONS[++i % SPIN_CAPTIONS.length]; }, 2400);
+    }
+    return wrap;
+  }
+  function ask(el) {
+    el.append(h('h3', {}, '🤖 Ask AI'));
+    if (!server.ai) {
+      el.append(spinner(false), h('p', { class: 'small', style: 'text-align:center' }, 'No AI API is connected. Enable one in config.php (Ollama or a cloud provider) and this app will answer general questions.'));
+      return;
+    }
+    el.append(h('p', { class: 'small' }, `Ask a general question. Answers come from ${server.aiProvider}${server.aiModel ? ' · ' + server.aiModel : ''} and can be wrong.`));
+    const box = h('div');
+    for (const m of askLog) box.append(h('div', { class: 'say' + (m.me ? ' me' : '') }, h('b', {}, m.me ? 'You: ' : 'AI: '), m.text, m.me ? '' : h('span', { class: 'small', style: 'margin-left:6px;opacity:.7' }, '✨AI')));
+    if (askBusy) box.append(spinner(true));
+    const inp = h('input', { placeholder: 'Ask anything…', style: 'width:68%' });
+    const send = async () => {
+      const q = inp.value.trim(); if (!q || askBusy) return;
+      askLog.push({ me: true, text: q }); askBusy = true; render();
+      const history = askLog.slice(-8).map((m) => ({ role: m.me ? 'user' : 'assistant', content: m.text }));
+      const r = await aiText('You are a helpful general-purpose assistant built into a phone in a cozy coffee game. Answer clearly and concisely (a few sentences). Do not claim to be a person.', history);
+      askBusy = false;
+      askLog.push({ me: false, text: r ? r.trim().slice(0, 1500) : '⚠ The AI did not answer. Is the AI service running?' });
+      if (app === 'ask' && isOpen()) render();
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); e.stopPropagation(); });
+    el.append(box, inp, h('button', { class: 'btn', onclick: send }, 'Ask'), askLog.length ? h('button', { class: 'btn alt', onclick: () => { askLog.length = 0; render(); } }, 'Clear') : '');
+    if (!askBusy) setTimeout(() => inp.focus(), 0);
   }
 
   // ------------------------------------------------------------ Settings
