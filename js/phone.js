@@ -201,6 +201,7 @@ export function createPhone(G) {
   function tControls(el) {
     const rows = [
       ['Move', 'Arrow keys / WASD / on-screen pad'],
+      ['Run', 'Hold 👍 (. key or the on-screen button) while moving'],
       ['💬 Talk', '/ (or the 💬 button) to a nearby neighbor or animal'],
       ['👍 Interact / yes', '. (period)'],
       ['⛔ No / cancel', ', (comma)'],

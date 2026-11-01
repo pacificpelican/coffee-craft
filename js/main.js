@@ -126,13 +126,14 @@ function wireInput() {
   addEventListener('keydown', (e) => {
     if (e.target.matches?.('input,textarea,select')) return;
     const k = e.key;
-    if (map[k]) { press(map[k]); e.preventDefault(); return; }
+    if (map[k]) { if (k === '.') input.run = true; if (!e.repeat) press(map[k]); e.preventDefault(); return; }
     if (k === 'p' || k === 'P' || k === 'Escape') { if (modalOpen) closeModal(); else if (phone.isOpen()) phone.close(); else togglePause(); return; }
     if (k === 'Tab') { e.preventDefault(); phone.isOpen() ? phone.close() : phone.open(); return; }
     if (k === 'm' || k === 'M') { toggleMute(); return; }
     keys.add(k.toLowerCase());
   });
-  addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+  addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); if (e.key === '.') input.run = false; });
+  addEventListener('blur', () => { input.run = false; });
   // pad
   const pad = $('#pad'); const held = new Set();
   const upd = () => {
@@ -151,7 +152,10 @@ function wireInput() {
   pad.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') fromPoint(e); });
   const end = () => { held.clear(); upd(); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  document.querySelectorAll('.ab').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(b.dataset.k); b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); }));
+  document.querySelectorAll('.ab').forEach((b) => {
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(b.dataset.k); if (b.dataset.k === 'yes') input.run = true; b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); });
+    if (b.dataset.k === 'yes') for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => { input.run = false; });
+  });
   // clicking billboards
   const ray = new THREE.Raycaster();
   $('#game').addEventListener('pointerup', (e) => {
@@ -549,7 +553,7 @@ function movePlayer(dt) {
     player.x = clamp(nx, BOUNDS.x0, BOUNDS.x1); player.z = clamp(nz, BOUNDS.z0, BOUNDS.z1); player.y = groundHeight(world, player.x, player.z);
     s.x = player.x; s.z = player.z; s.h = player.heading; s.mesh.position.set(s.x, player.y, s.z); s.mesh.rotation.y = s.h; player.speed = Math.abs(s.v) * 0.2;
   } else if (!player.sitting) {
-    const spd = (wob ? 2.6 : 4) * (player.eating > 0 ? 0.3 : 1);
+    const spd = (wob ? 2.6 : (input.run ? 7 : 4)) * (player.eating > 0 ? 0.3 : 1);
     const yc = Math.cos(cam.yaw), ys = Math.sin(cam.yaw);
     let ax = mv.x * yc + mv.z * ys, az = -mv.x * ys + mv.z * yc; if (wob) { ax += Math.sin(t * 2.3) * 0.35; az += Math.cos(t * 1.7) * 0.35; }
     const m = Math.hypot(ax, az); player.speed = m > 0.1 ? spd : 0;
