@@ -9,7 +9,7 @@ import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -31,7 +31,7 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
@@ -48,7 +48,7 @@ export function createPhone(G) {
 
   // ------------------------------------------------------------ Map
   function mapApp(el) {
-    const { world, player, tram } = G.mapInfo();
+    const { world, player, tram, robo } = G.mapInfo();
     const R = [-124, -62, 0, 62, 124];
     const X0 = -182, X1 = 192, Z0 = -162, Z1 = 140;
     const e = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -68,6 +68,7 @@ export function createPhone(G) {
       <text x="-155" y="0" class="mt" text-anchor="middle" fill="#fff" transform="rotate(-90 -155 0)">canal</text>
       <text x="0" y="-139" class="mt" text-anchor="middle" fill="#fff">interstate</text>
       <text x="${X1 - 22}" y="${Z0 + 12}" class="mt" font-size="14">N↑</text>
+      ${robo ? `<g><circle cx="${robo.x}" cy="${robo.z}" r="5" fill="#5ee6ff" stroke="#0f2a33" stroke-width="1.5"/><text x="${robo.x}" y="${robo.z - 7}" class="mt" text-anchor="middle">Robot Driver</text></g>` : ''}
       <g id="mapPin"><circle r="9" fill="#d03c4a" opacity=".25"><animate attributeName="r" values="5;13;5" dur="1.6s" repeatCount="indefinite"/></circle><circle r="4.5" fill="#d03c4a" stroke="#fff" stroke-width="1.6"/></g>
     </svg>`;
     const wrap = h('div', { class: 'mapwrap', html: svg });
@@ -75,6 +76,32 @@ export function createPhone(G) {
     const pin = wrap.querySelector('#mapPin');
     const place = () => pin.setAttribute('transform', `translate(${player.x.toFixed(1)} ${player.z.toFixed(1)})`);
     const tm = setInterval(() => { if (!pin.isConnected) return clearInterval(tm); place(); }, 400); place();
+  }
+
+  // ------------------------------------------------------------ Robot Driver (ride share)
+  let roboFilter = '', roboMsg = '';
+  function roboApp(el) {
+    const rs = G.rideshare, st = rs.status();
+    el.append(h('h3', {}, '🚗 Robot Driver'), h('p', { class: 'small' }, 'Driverless white cars. Order one and it comes to you, flashing its lights.'));
+    if (roboMsg) { el.append(h('p', { class: 'small', style: 'color:#b3261e' }, roboMsg)); roboMsg = ''; }
+    if (st.phase !== 'idle') {
+      const lines = { coming: `Car ${st.plate} (${st.style}) is on its way. Close the phone and watch the street.`, waiting: `${st.plate} is here! Look for the flashing lights and press ▶️ next to it.`, riding: `Riding in ${st.plate}.`, leaving: 'Trip complete.' };
+      el.append(h('div', { class: 'bizcard' }, h('b', {}, st.dest ? `To: ${st.dest.label}` : ''), h('div', {}, lines[st.phase] || ''), h('div', { class: 'small' }, `Estimated fare ${money(st.fare)}`),
+        h('div', { class: 'row' }, h('button', { class: 'btn alt', onclick: close }, 'Close phone'), st.phase === 'coming' || st.phase === 'waiting' ? h('button', { class: 'btn warn', onclick: () => { rs.cancel(); render(); } }, 'Cancel') : '')));
+      return;
+    }
+    const inp = h('input', { placeholder: 'Where to? (search)', value: roboFilter, style: 'width:90%' });
+    const list = h('div');
+    const draw = () => {
+      const q = roboFilter.toLowerCase();
+      list.replaceChildren(...rs.destinations().filter((d) => d.label.toLowerCase().includes(q)).slice(0, 40).map((d) => {
+        const e = rs.estimate(d);
+        return h('div', { class: 'bizcard', style: 'cursor:pointer', onclick: () => { roboMsg = rs.order(d) || ''; render(); } }, h('b', {}, d.label), h('div', { class: 'small' }, `about ${money(e.fare)}`));
+      }));
+    };
+    inp.addEventListener('input', () => { roboFilter = inp.value; draw(); });
+    inp.addEventListener('keydown', (e) => e.stopPropagation());
+    draw(); el.append(inp, list);
   }
 
   // ------------------------------------------------------------ Ask AI

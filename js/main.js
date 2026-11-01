@@ -11,12 +11,13 @@ import { buildWorld, groundHeight, INT, BOUNDS } from './world.js';
 import { makePlayerModel, animateHuman, makeScooter } from './actors.js';
 import { buildTraffic, buildStreetcar, buildEnvironment } from './traffic.js';
 import { buildNpcs, nearestOf } from './npcs.js';
+import { buildRideshare } from './rideshare.js';
 import { createPhone } from './phone.js';
 import { playPickleball, playRoaster, playEspresso, playFight } from './minigames.js';
 
 const SAVE_KEY = 'coffeecraft.save';
 const state = { minutes: 8 * 60, day: 1, weather: 'cloudy', diary: [], contacts: [], chats: {}, news: [], roastsUnlocked: ['light', 'medium', 'dark'], roastTries: 0, owns: {}, buzzed: null };
-let world, scene, camera, renderer, env, traffic, tramSys, npcSys, phone, player, playerMesh, clock;
+let world, scene, camera, renderer, env, traffic, tramSys, rideshare, npcSys, phone, player, playerMesh, clock;
 let paused = true, started = false, modalOpen = false, hud;
 const input = { x: 0, z: 0, edge: {} };
 const keys = new Set();
@@ -44,7 +45,19 @@ const G = {
   price: (b, base) => Math.round(base * tierMult(b)),
   menuFor: (b) => (b.generic ? b.newMenu : defOf(b.id)?.menu) || [],
   snapshot: () => ({ state, player: { x: player.x, z: player.z } }),
-  mapInfo: () => ({ world, player, tram: tramSys.tram }),
+  mapInfo: () => ({ world, player, tram: tramSys.tram, robo: rideshare.carPos() }),
+  rideshare: {
+    status: () => rideshare.status(),
+    destinations: () => rideshare.destinations(tramSys.tram),
+    estimate: (dest) => rideshare.estimate(player, dest),
+    order: (dest) => {
+      if (player.ride || player.scooter) return 'Finish your current ride first.';
+      if (rideshare.phase() !== 'idle') return 'You already have a car on the way.';
+      if (state.bank.cash < rideshare.estimate(player, dest).fare) return 'Not enough funds for this ride.';
+      rideshare.order(player, dest); sfx('bell'); return null;
+    },
+    cancel: () => rideshare.cancel(),
+  },
   aiText,
   restore: (sv) => { Object.assign(state, sv.state); if (state.musicChannel) setChannel(state.musicChannel); if (sv.player) { player.x = sv.player.x; player.z = sv.player.z; } notify('Game loaded.'); },
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
@@ -79,6 +92,19 @@ async function boot() {
   env = buildEnvironment(scene, renderer);
   traffic = buildTraffic(scene, world);
   tramSys = buildStreetcar(scene, world);
+  rideshare = buildRideshare(scene, world, {
+    waiting: (s) => { notify(`🚗 Your Robot Driver (${s.plate}, white ${s.style}) is here. Look for the flashing lights and press ▶️ next to it.`, { sound: false, ms: 6000 }); sfx('bell'); },
+    expired: () => notify('Robot Driver: no rider detected. Trip cancelled.', { sound: false }),
+    arrived: (s, curb) => {
+      const fare = s.fare; state.bank.cash -= Math.min(fare, state.bank.cash); sfx('coin');
+      const a = player.ride === 'robo';
+      if (a) {
+        const [nx, nz] = collide(curb[0], curb[1], 0.2, 0.45);
+        player.x = nx; player.z = nz; player.y = groundHeight(world, nx, nz); player.ride = null; playerMesh.visible = true; sfx('door');
+      }
+      notify(`🤖 Arrived at ${s.dest.label}. Fare ${money(fare)}. “Thank you for riding with Robot Driver. Please rate your human.”`, { sound: false, ms: 6000 });
+    },
+  });
   player = { x: world.spawn.x, z: world.spawn.z, y: 0.2, heading: Math.PI, speed: 0, ride: null, sitting: null, eating: 0, scooter: null };
   playerMesh = makePlayerModel(); scene.add(playerMesh);
   npcSys = buildNpcs(scene, world, 44);
@@ -259,6 +285,7 @@ function nearbyTargets() {
   if (player.inside) return out;
   for (const d of world.doors) { const dd = Math.hypot(d.x - player.x, d.z - player.z); if (dd < (d.r || 2.6) + 0.6) out.push({ kind: 'door', d, dist: dd, label: 'Enter ' + d.label }); }
   for (const s of scooters) { if (s.riding) continue; const dd = Math.hypot(s.x - player.x, s.z - player.z); if (dd < 2.4) out.push({ kind: 'scooter', s, dist: dd, label: 'Ride scooter' }); }
+  if (rideshare.phase() === 'waiting') { const c = rideshare.carPos(), dd = Math.hypot(c.x - player.x, c.z - player.z); if (dd < 8) out.push({ kind: 'robo', dist: dd, label: 'Board Robot Driver' }); }
   for (const a of traffic.agents) {
     if (a.type !== 'bus') continue; const dd = Math.hypot(a.mesh.position.x - player.x, a.mesh.position.z - player.z);
     if (dd < 7 && a.v < 1.5) out.push({ kind: 'bus', a, dist: dd, label: 'Board bus' });
@@ -275,6 +302,7 @@ function handleActions() {
   const e = input.edge; input.edge = {};
   if (player.ride === 'tram') { if (e.friendly || e.yes) alightTram(); return; }
   if (player.ride === 'bus') { if (e.friendly || e.yes) { player.bus.stopReq = true; notify('Stop requested — the bus will pull up.', { sound: false, ms: 2000 }); sfx('bell'); } return; }
+  if (player.ride === 'robo') { if (e.friendly || e.yes) notify(pick(['Robot Driver: “I will stop at your destination. I have never missed one.”', 'Robot Driver: “Please remain seated. I am vibing.”', 'Robot Driver: “Did you know? I do not know either.”']), { sound: false, ms: 3500 }); return; }
   if (player.scooter) return scooterActions(e);
   const t = nearbyTargets()[0];
   if (e.friendly) {
@@ -298,6 +326,7 @@ function activate(t) {
   if (t.kind === 'poster') return window.open(t.it.url, '_blank', 'noopener');
   if (t.kind === 'court') return openModal((c) => playPickleball(c, G_mini(), closeModal));
   if (t.kind === 'tramstop') return boardTram();
+  if (t.kind === 'robo') { if (rideshare.board()) { player.ride = 'robo'; playerMesh.visible = false; sfx('door'); notify(`Buckled in. Heading to ${rideshare.status().dest.label}. Fare ${money(rideshare.status().fare)}.`, { sound: false, ms: 5000 }); } return; }
   if (t.kind === 'bus') { player.ride = 'bus'; player.bus = t.a; t.a.rider = true; t.a.stopReq = false; playerMesh.visible = false; sfx('door'); notify('On the bus! ▶️ to request a stop and get off.', { sound: false, ms: 5000 }); }
 }
 function alightBus() {
@@ -652,13 +681,13 @@ function tick(dt) {
   state.weather = env.weather;
   env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
   if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt);
+  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt); rideshare.update(dt, traffic.agents);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);
   // prompt
   const tg = nearbyTargets()[0]; const n = npcNear(3.2);
-  prompt_(player.ride === 'bus' ? (player.bus.stopReq ? 'Stopping…' : '▶️ request stop') : player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
+  prompt_(player.ride === 'bus' ? (player.bus.stopReq ? 'Stopping…' : '▶️ request stop') : player.ride === 'robo' ? '🤖 Robot Driver is taking you there' : player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
   // rain sfx & night traffic hum skipped; random chats
   msgT -= dt; if (msgT <= 0) { msgT = rand(80, 160); contactMessage(); }
   saveT += dt; if (saveT > 45) { saveT = 0; saveLocal(); }
@@ -698,6 +727,8 @@ function movePlayer(dt) {
   } else if (player.ride === 'bus') {
     const a = player.bus, p = a.mesh.position; player.x = p.x; player.z = p.z; player.y = 1.2; player.speed = 0; player.heading = a.h;
     if (a.stopReq && a.v < 0.5) alightBus();
+  } else if (player.ride === 'robo') {
+    const c = rideshare.center(); player.x = c.x; player.z = c.z; player.y = 1.0; player.speed = 0; player.heading = c.h;
   } else if (player.scooter) {
     const s = player.scooter;
     s.thr = (s.thr || 0) - dt * 0.6; const acc = s.thr > 0 ? 9 : 0;
