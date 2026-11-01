@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { DATA, loadData } from './data.js';
 import { server, initServer, account, aiText, aiJson } from './api.js';
 import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
-import { stockFor } from './stock.js';
+import { stockFor, crystalStock } from './stock.js';
 import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS, kindFor, sanitizeSVG } from './art.js';
 import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel } from './audio.js';
 import * as eco from './economy.js';
@@ -463,8 +463,55 @@ function enterDojo() {
   });
 }
 
+const CRYSTAL_SHOP = { id: 'crystals', name: 'Moonlit Quartz' };
+function enterCrystalShop() {
+  sfx('door');
+  const stock = () => crystalStock(state.day, (state.extraItems ||= {}).crystals);
+  openModal((c) => {
+    const list = h('div', { class: 'menu-items' });
+    const showItem = (it) => openModal((m) => m.append(h('h3', {}, it[0]), itemImg(it[0], it[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, it[3] || ''),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => buyItem(CRYSTAL_SHOP, it) }, `👍 Buy ${money(it[1])}`), h('button', { class: 'btn warn', onclick: enterCrystalShop }, '⛔ Back'))));
+    const draw = () => list.replaceChildren(...stock().map((it) => h('div', { class: 'menu-item', onclick: () => showItem(it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(it[1])))));
+    draw();
+    c.append(h('h3', {}, '💎 Moonlit Quartz'), h('p', { class: 'small' }, 'Beaded curtains, incense, and a cat asleep on the geodes. “Touch anything you like. Pick up whatever hums.”'), list,
+      h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
+    aiNewCrystal(() => { if (list.isConnected) draw(); });
+  });
+}
+// Small local models often emit slightly broken JSON; fall back to pulling fields out with regexes.
+function looseFields(t, keys) {
+  if (!t) return null;
+  const m = t.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* fall through */ } }
+  const o = {};
+  for (const k of keys) { const r = t.match(new RegExp(`"?${k}"?\\s*:\\s*(?:"([^"]*)"|([#\\w.]+))`, 'i')); if (r) o[k] = r[1] ?? r[2]; }
+  return Object.keys(o).length ? o : null;
+}
+// With AI on, the shop's shelf can gain a one-of-a-kind stone per day (up to 8), kept in the save.
+let aiCrystalPending = false;
+function aiNewCrystal(done) {
+  if (!server.ai || aiCrystalPending) return;
+  const extras = (state.extraItems ||= {}).crystals ||= [];
+  const seen = (state.aiStockDay ||= {});
+  if (seen.crystals === state.day || extras.length >= 8) return;
+  aiCrystalPending = true;
+  const have = crystalStock(state.day, extras).map((i) => i[0]).join(', ');
+  aiText('You name and describe imaginary, whimsical, family-friendly crystals and stones for a cozy rock shop. Reply with ONLY minified JSON.',
+    [{ role: 'user', content: `Already on the shelf: ${have}. Invent ONE new stone that is not on that list. Reply as {"name":"2-4 words","price":number 10-60,"desc":"one short evocative sentence","color":"#rrggbb","shape":"cluster|point|tumble|geode"}.` }]).then((txt) => {
+    const j = looseFields(txt, ['name', 'price', 'desc', 'color', 'shape']);
+    const name = String(j?.name || '').replace(/[<>"]/g, '').trim().slice(0, 32);
+    const price = Math.max(8, Math.min(80, Math.round(Number(j?.price) || 0)));
+    const color = /^#[0-9a-f]{6}$/i.test(j?.color || '') ? j.color : null;
+    const shape = ['cluster', 'point', 'tumble', 'geode'].includes(j?.shape) ? j.shape : 'cluster';
+    if (!name || !price || !color || have.toLowerCase().includes(name.toLowerCase())) return;
+    extras.push([name, price, `xtal:${shape}:${color}`, String(j.desc || '').replace(/[<>]/g, '').slice(0, 140)]);
+    seen.crystals = state.day; notify(`💎 A new stone arrived at Moonlit Quartz: ${name}`, { sound: false }); done();
+  }).catch(() => {}).finally(() => { aiCrystalPending = false; });
+}
+
 function enterVenue(d) {
   if (d.special === 'dojo') return enterDojo();
+  if (d.special === 'crystal') return enterCrystalShop();
   const def = defOf(d.bizId) || {};
   // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
   const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);

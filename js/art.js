@@ -70,12 +70,29 @@ const KEYWORDS = [
 
 // Returns the art key for an item, or null when nothing matches (the caller may then ask the AI for a drawing).
 export function kindFor(name, kind) {
-  if (kind && ART[kind]) return kind;
+  if (kind && (ART[kind] || /^xtal:\w+:#[0-9a-f]{6}$/i.test(kind))) return kind;
   const hit = KEYWORDS.find(([re]) => re.test(String(name || '')));
   return hit ? hit[1] : null;
 }
 
+// Crystal icons: kind is "xtal:<shape>:#rrggbb" so any colour/shape (including AI-invented ones) can be drawn.
+const mix = (hex, to, t) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const a = p(hex), b = p(to); return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function xtalSVG(shape, col) {
+  const lt = mix(col, '#ffffff', 0.45), dk = mix(col, '#000000', 0.35), o = 'stroke="#2b2f2a" stroke-width="4" stroke-linejoin="round"';
+  const bg = mix(col, '#f4efe0', 0.82);
+  const point = (x, y, w, h, rot = 0) => `<g transform="rotate(${rot} ${x} ${y})"><polygon points="${x - w / 2},${y} ${x - w / 2},${y - h * 0.72} ${x},${y - h} ${x + w / 2},${y - h * 0.72} ${x + w / 2},${y}" fill="${col}" ${o}/><polygon points="${x},${y} ${x},${y - h} ${x + w / 2},${y - h * 0.72} ${x + w / 2},${y}" fill="${dk}" opacity=".45"/><polygon points="${x - w / 2 + 4},${y - 6} ${x - w / 2 + 4},${y - h * 0.68} ${x - w / 4},${y - h * 0.8} ${x - w / 4},${y - 6}" fill="${lt}" opacity=".8"/></g>`;
+  let inner;
+  if (shape === 'point') inner = point(100, 168, 46, 128);
+  else if (shape === 'tumble') inner = `<path d="M44 118q-6-44 40-56q50-10 70 26q16 38-26 62q-42 12-70-8q-12-10-14-24z" fill="${col}" ${o}/><path d="M62 92q10-22 36-24" stroke="${lt}" stroke-width="8" fill="none" stroke-linecap="round"/><circle cx="130" cy="120" r="5" fill="${dk}" opacity=".5"/><circle cx="84" cy="134" r="4" fill="${dk}" opacity=".5"/>`;
+  else if (shape === 'geode') inner = `<path d="M30 120q-6-56 56-72q56-10 80 36q14 44-28 70q-50 14-92-6q-14-10-16-28z" fill="#8a8578" ${o}/><path d="M50 118q-2-36 40-46q38-6 56 24q8 30-22 46q-34 8-62-6q-10-8-12-18z" fill="${dk}" ${o}/><path d="M62 116q0-22 30-30q28-4 40 16q4 20-16 32q-28 6-48-4q-6-6-6-14z" fill="${col}"/><g fill="${lt}"><polygon points="76,112 84,96 92,112"/><polygon points="96,118 106,98 116,118"/><polygon points="112,108 118,96 126,108"/></g>`;
+  else inner = `${point(66, 160, 36, 70, -18)}${point(138, 160, 38, 84, 16)}${point(100, 168, 52, 124)}${point(116, 150, 26, 54, 34)}`;
+  const sparkle = `<path d="M158 40l4 12 12 4-12 4-4 12-4-12-12-4 12-4z" fill="#fff" opacity=".9"/><path d="M40 52l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#fff" opacity=".7"/>`;
+  return svg(inner + sparkle, bg);
+}
+
 export function foodSVG(kind, variant) {
+  const m = /^xtal:(\w+):(#[0-9a-f]{6})$/i.exec(kind || '');
+  if (m) return xtalSVG(m[1], m[2]);
   const fn = ART[kind] || ART.pastry;
   return fn(variant);
 }

@@ -26,7 +26,7 @@ const STORE_TYPES = ['coffee', 'restaurant', 'donut', 'pub', 'convenience', 'dru
 export function buildWorld(scene, defList) {
   const world = {
     colliders: [], buildings: {}, doors: [], interactables: [], clickables: [], trashSpots: [], scooters: [], stops: [],
-    lamps: [], nightGlow: [], raisedSigns: [], spawn: new THREE.Vector3(-98, 0, -55), parkSign: null, dogs: [], parkBounds: null,
+    lamps: [], nightGlow: [], raisedSigns: [], spawn: new THREE.Vector3(-98, 0, -55), parkSign: null, dogs: [], parkBounds: null, alleyDoors: [],
   };
   const rnd = mulberry(7);
   const add = (o) => { scene.add(o); return o; };
@@ -75,8 +75,9 @@ export function buildWorld(scene, defList) {
     // alley dressing
     for (let k = 0; k < 3; k++) {
       const ax0 = bx + rand(-18, 18);
-      // keep the dojo's alley door clear of dumpsters
-      const ax = (world.dojoDoor && Math.abs(ax0 - world.dojoDoor.x) < 5 && Math.abs(bz - world.dojoDoor.z) < 12) ? ax0 + (ax0 < world.dojoDoor.x ? -6 : 6) : ax0;
+      // keep alley doors (dojo, crystal shop) clear of dumpsters
+      let ax = ax0;
+      for (const ad of world.alleyDoors) if (Math.abs(ax - ad.x) < 5 && Math.abs(bz - ad.z) < 12) ax = ax0 < ad.x ? ad.x - 6 : ad.x + 6;
       const dm = box(2.6, 1.5, 1.4, '#3f6a4a', ax, 0.95, bz + rand(-2, 2)); add(dm); solid(ax - 1.4, ax + 1.4, dm.position.z - 0.8, dm.position.z + 0.8, 2);
       world.trashSpots.push({ x: ax, z: dm.position.z + (dm.position.z > bz ? -1.4 : 1.4), kind: 'dumpster' });
       const tc = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.34, 0.9, 8), mat('#5d6a70')); tc.position.set(ax + 2.4, 0.65, bz + rand(-2.4, 2.4)); add(tc);
@@ -172,11 +173,11 @@ export function buildWorld(scene, defList) {
     // alley-side back door (e.g. the martial arts studio behind Eastgate)
     if (def.backDoor) {
       const bd = def.backDoor, bz0 = -d / 2;
-      g.add(box(2.2, 3.1, 0.25, '#8a2f1a', bd.x, 1.55, bz0 - 0.12));
+      g.add(box(2.2, 3.1, 0.25, bd.doorColor || '#8a2f1a', bd.x, 1.55, bz0 - 0.12));
       g.add(box(2.7, 0.3, 0.4, '#2b2f2a', bd.x, 3.3, bz0 - 0.2));
-      const bs = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: signTexture(THREE, bd.name, '#2b2f2a', '#fff6dc', 'martial arts · dojo') }));
+      const bs = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), new THREE.MeshBasicMaterial({ map: signTexture(THREE, bd.name, bd.signBg || '#2b2f2a', '#fff6dc', bd.sub || 'martial arts · dojo') }));
       bs.position.set(bd.x, 4.7, bz0 - 0.1); bs.rotation.y = Math.PI; g.add(bs);
-      const lan = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshBasicMaterial({ color: '#e8832b' }));
+      const lan = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshBasicMaterial({ color: bd.lantern || '#e8832b' }));
       lan.position.set(bd.x - 2, 2.9, bz0 - 0.6); lan.scale.y = 1.3; g.add(lan);
     }
     add(g);
@@ -184,8 +185,10 @@ export function buildWorld(scene, defList) {
     const doorW = g.localToWorld(new THREE.Vector3(0, 0, fz + 2.4));
     if (def.backDoor) {
       const p = g.localToWorld(new THREE.Vector3(def.backDoor.x, 0, -d / 2 - 2.4));
-      world.doors.push({ type: 'door', bizId: def.backDoor.id, special: 'dojo', x: p.x, z: p.z, r: 2.4, label: def.backDoor.name });
-      world.dojoDoor = { x: p.x, z: p.z };
+      const sp = def.backDoor.special || 'dojo';
+      world.doors.push({ type: 'door', bizId: def.backDoor.id, special: sp, x: p.x, z: p.z, r: 2.4, label: def.backDoor.name });
+      world.alleyDoors.push({ x: p.x, z: p.z });
+      if (sp === 'dojo') world.dojoDoor = { x: p.x, z: p.z };
     }
     const rec = { id: def.id, def, x: cx, z: cz, w, d, h: hgt, group: g, door: { x: doorW.x, z: doorW.z }, derelict };
     world.buildings[def.id] = rec;

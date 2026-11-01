@@ -42,8 +42,7 @@
     {"id":"lab","name":"The Roast Lab","type":"lab","block":[0,1],"slot":"N1","color":"#5d6a70","public":true},
     {"id":"cyclo","name":"Little Cyclo Drip Stand","type":"coffee","style":"vietnamese","block":[0,1],"slot":"S0","color":"#d9772b","quality":70,"base":40,"owner":"player",
       "menu":[["Ca Phe Sua Da",5,"vncoffee","Slow phin drip over sweet condensed milk and ice."],["Egg Coffee",6,"vncoffee","Whipped yolk cream floating on dark coffee."],["Banh Mi Pate",7,"burger","Crisp baguette, pickles, cilantro."]]},
-    {"id":"apts4","name":"Lantern Court","type":"apartments","block":[0,1],"slot":"S1","color":"#8a7a5a","floors":5},
-
+    {"id":"apts4","name":"Lantern Court","type":"apartments","block":[0,1],"slot":"S1","color":"#8a7a5a","floors":5,"backDoor":{"id":"crystals","name":"Moonlit Quartz","special":"crystal","x":-6.5,"sub":"crystals · gems · curios","signBg":"#3b2a5a","doorColor":"#5a3a8a","lantern":"#b98cff"}},
     {"id":"midnight","name":"Midnight Tonkotsu","type":"restaurant","style":"ramen","block":[1,1],"slot":"N0","color":"#5d6a70","quality":74,"base":34,
       "menu":[["Midnight Black Garlic Ramen",15,"ramen","Open until the last pub empties."],["Karaage Box",9,"dumpling","Crisp fried chicken with lemon."]]},
     {"id":"seoulsugar","name":"Seoul Sugar Donuts","type":"donut","style":"donut","block":[1,1],"slot":"N1","color":"#d9772b","quality":66,"base":30,
