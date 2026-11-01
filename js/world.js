@@ -480,9 +480,14 @@ export function buildWorld(scene, defList) {
     solid(cx - 0.3, cx + 0.3, cz - 4.2, cz + 4.2, 2);
     world.court = { x: cx, z: cz };
     world.interactables.push({ type: 'court', x: cx - 5.5, z: cz, r: 3.2, label: 'Pickleball court' });
-    // lower level trees and benches
-    for (let k = 0; k < 6; k++) tree(bx - 24 + rnd() * 48, bz + 6 + rnd() * 18, 0.9 + rnd() * 0.4);
-    scene.children.slice(-6).forEach((t) => { if (Math.abs(t.position.x - cx) < 10 && Math.abs(t.position.z - cz) < 7) t.position.x += 14; });
+    // lower level trees: keep them on the lawn (inside the park, clear of the court, dog park, ramps and roads)
+    for (let k = 0, tries = 0; k < 6 && tries < 200; tries++) {
+      const x = bx - 22 + rnd() * 44, z = bz + 6 + rnd() * 17;
+      if (Math.abs(x - cx) < 11 && Math.abs(z - cz) < 7) continue;
+      if (x < dx1 + 1.5 && z > dz0 - 1) continue;
+      if (Math.abs(x - (bx + 16)) < 3.5 || Math.abs(x - (bx - 20)) < 3.5) continue;
+      tree(x, z, 0.9 + rnd() * 0.4); k++;
+    }
     bench(cx + 9, 0.3, cz + 4, -Math.PI / 2); bench(cx - 1, 0.3, cz + 7, Math.PI);
     world.interactables.push({ type: 'tablehint', x: bx, z: bz + 10, r: 0 });
   }
