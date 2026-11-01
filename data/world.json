@@ -83,7 +83,8 @@
       "menu":[["Coconut Coffee",6,"vncoffee","Blended with coconut cream."],["Salted Cream Coffee",6,"vncoffee","Sweet-salty foam on top."]]},
     {"id":"salmonrice","name":"Salmon & Rice","type":"restaurant","style":"seafood","block":[3,2],"slot":"N1","color":"#d9772b","quality":75,"base":36,
       "menu":[["Teriyaki Salmon Bowl",16,"platter","Cedar-grilled, rice, pickles."],["Miso Soup",4,"pho","Tofu and wakame."]]},
-    {"id":"vacant1","name":"Vacant Lot","type":"lot","block":[3,2],"slot":"S0"},
+    {"id":"nightowl","name":"Sunrise Always Diner","type":"restaurant","style":"24-hr diner","hours":[0,24],"block":[3,2],"slot":"S0","color":"#c2483a","quality":60,"base":34,
+      "menu":[["Graveyard Shift Skillet",11,"pancakes","Potatoes, peppers, sausage and two eggs, any hour."],["Bottomless Black Coffee",3,"coffee","Thick white mug, endless refills."],["Meatloaf Plate",13,"platter","Gravy, mash and green beans, 3 a.m. approved."]]},
     {"id":"apts6","name":"Ravenna Flats","type":"apartments","block":[3,2],"slot":"S1","color":"#7c6f60","floors":5},
 
     {"id":"gridiron","name":"Gridiron Diner & Coffee","type":"coffee","style":"diner","block":[2,3],"slot":"N0","color":"#c99a2e","quality":57,"base":36,

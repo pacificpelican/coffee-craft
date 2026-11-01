@@ -43,7 +43,7 @@ export function newBusiness(def) {
   return {
     id: def.id, name: def.name, type: t, style: def.style || null, def: def.id,
     owner: def.owner === 'player' ? 'player' : 'npc', state: 'open',
-    tier: def.tier ?? 1, hours: [...(DEFAULT_HOURS[t] || [9, 18])],
+    tier: def.tier ?? 1, hours: [...(def.hours || DEFAULT_HOURS[t] || [9, 18])],
     baseQuality: quality, quality, buzz: randInt(35, 65), reputation: randInt(45, 75),
     totalVisitors: 0, dayVisitors: 0, lastDayVisitors: 0, curVisitors: 0,
     totalRevenue: 0, dayRevenue: 0, lastDayRevenue: 0,
