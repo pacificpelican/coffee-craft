@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import { DATA, loadData } from './data.js';
 import { server, initServer, account, aiText, aiJson } from './api.js';
 import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
-import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS } from './art.js';
+import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS, kindFor, sanitizeSVG } from './art.js';
 import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel } from './audio.js';
 import * as eco from './economy.js';
 import { buildWorld, groundHeight, INT, BOUNDS } from './world.js';
@@ -403,15 +403,34 @@ function pickRoastStyles() { return DATA.roastStyles.filter((r) => state.roastsU
 function consume(b, item, price) {
   if (state.bank.cash < price) { notify('Your bank balance is too low.'); return false; }
   state.bank.cash -= price; sfx(item[2] === 'beer' ? 'sip' : 'eat');
-  if (!state.diary.some((d) => d.name === item[0])) state.diary.push({ name: item[0], kind: item[2], where: b.name, day: state.day });
+  if (!state.diary.some((d) => d.name === item[0])) state.diary.push({ name: item[0], kind: kindFor(item[0], item[2]) || item[2], where: b.name, day: state.day });
   state.points += 2;
   player.eating = 2.2; notify(`😋 You enjoy the ${item[0]}.`, { sound: false });
   if (item[2] === 'beer') state.buzzed = { type: 'booze', until: state.minutes + 60 };
   return true;
 }
+// Item picture: tagged/keyword icon first; otherwise a plain platter that an AI-drawn SVG replaces (cached per item name).
+const itemSrc = (name, kind) => { const k = kindFor(name, kind); return svgURI(foodSVG(k || 'platter')); };
+const aiArtPending = new Set();
+function itemImg(name, kind, attrs = {}) {
+  const img = h('img', { ...attrs, src: itemSrc(name, kind) });
+  if (kindFor(name, kind) || !server.ai) return img;
+  state.itemArt ||= {};
+  if (state.itemArt[name]) { img.onerror = () => { delete state.itemArt[name]; img.onerror = null; img.src = itemSrc(name, kind); }; img.src = svgURI(state.itemArt[name]); return img; }
+  if (aiArtPending.has(name)) return img;
+  aiArtPending.add(name);
+  aiText('You draw tiny flat icons as SVG for a cozy low-poly game. Reply with ONLY one <svg> element: viewBox="0 0 200 200", 4 to 10 simple shapes (rect, circle, ellipse, path, polygon), thick dark outline #2b2f2a, warm muted colors, no text, no scripts, no images.',
+    [{ role: 'user', content: `Draw a simple icon of: ${name}` }]).then((r) => {
+    let clean = sanitizeSVG(r);
+    if (clean && !/xmlns=/.test(clean)) clean = clean.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    const bad = !clean || !/viewBox/i.test(clean) || new DOMParser().parseFromString(clean, 'image/svg+xml').querySelector('parsererror');
+    if (!bad) { state.itemArt[name] = clean; if (img.isConnected) img.src = svgURI(clean); }
+  }).catch(() => {}).finally(() => aiArtPending.delete(name));
+  return img;
+}
 function foodModal(b, item) {
   const price = G.price(b, item[1]);
-  openModal((c) => c.append(h('h3', {}, item[0]), h('img', { src: svgURI(foodSVG(item[2] || 'platter')), style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, item[3] || ''),
+  openModal((c) => c.append(h('h3', {}, item[0]), itemImg(item[0], item[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, item[3] || ''),
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (consume(b, item, price)) closeModal(); } }, `👍 Buy ${money(price)}`), h('button', { class: 'btn warn', onclick: () => enterVenueById(b.id) }, '⛔ Back'))));
 }
 function enterVenueById(id) { const d = world.doors.find((x) => x.bizId === id); if (d) enterVenue(d); }
@@ -460,10 +479,10 @@ function enterVenue(d) {
     c.append(h('h3', {}, b.name), h('div', { class: 'small' }, b.owner === 'public' ? '' : `${b.style ? b.style + ' · ' : ''}${b.owner === 'player' ? 'Yours' : ''} · rep ${Math.round(b.reputation)} · buzz ${Math.round(b.buzz)}`));
     const menu = G.menuFor(b);
     if (['coffee', 'restaurant', 'donut', 'pub'].includes(t) && menu.length) {
-      c.append(h('p', { class: 'small' }, 'You take a seat. Tap an item to look at it.'), h('div', { class: 'menu-items' }, ...menu.map((it) => h('div', { class: 'menu-item', onclick: () => foodModal(b, it) }, h('img', { src: svgURI(foodSVG(it[2] || 'platter')), alt: '' }), h('b', {}, it[0]), h('div', {}, money(G.price(b, it[1])))))));
+      c.append(h('p', { class: 'small' }, 'You take a seat. Tap an item to look at it.'), h('div', { class: 'menu-items' }, ...menu.map((it) => h('div', { class: 'menu-item', onclick: () => foodModal(b, it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(G.price(b, it[1])))))));
     }
     if (def.items) {
-      c.append(h('div', { class: 'menu-items' }, ...def.items.map((it) => h('div', { class: 'menu-item', onclick: () => buyItem(b, it) }, h('img', { src: svgURI(foodSVG(it[2] || 'platter')) }), h('b', {}, it[0]), h('div', {}, money(it[1]))))));
+      c.append(h('div', { class: 'menu-items' }, ...def.items.map((it) => h('div', { class: 'menu-item', onclick: () => buyItem(b, it) }, itemImg(it[0], it[2]), h('b', {}, it[0]), h('div', {}, money(it[1]))))));
     }
     if (t === 'lab') c.append(h('p', {}, 'Roasters, espresso machines, a smell of burnt sugar.'), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => openModal((cc) => playRoaster(cc, G_mini(), closeModal)) }, '🔥 Use roaster'), h('button', { class: 'btn alt', onclick: () => openModal((cc) => playEspresso(cc, G_mini(), closeModal)) }, '☕ Espresso machine')));
     if (t === 'hotel') c.append(h('p', {}, '“Welcome to Hotel Bogey. Need a room?” the front desk person asks. On the wall: an ink-and-watercolor bird.'), h('img', { src: 'assets/art/art1.jpg', style: 'width:100%;max-height:160px;object-fit:cover;border-radius:10px' }), h('button', { class: 'btn', onclick: () => sleep(b) }, `🛏 Check in & sleep ($${Math.round(120 * 1)})`));
