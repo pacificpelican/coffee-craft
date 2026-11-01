@@ -75,11 +75,12 @@ export function buildNpcs(scene, world, count = 44) {
   });
 
   // ---- animals
-  const spawnAnimal = (kind, x, z) => { const m = makeAnimal(kind); scene.add(m); const a = { kind, mesh: m, x, z, y: 0.2, heading: rand(0, 6), state: 'idle', timer: rand(0, 3), tx: x, tz: z, isAnimal: true, persona: { name: kind === 'pigeon' ? 'a pigeon' : kind === 'gull' ? 'a seagull' : kind === 'raccoon' ? 'a raccoon' : kind === 'pelican' ? 'a brown pelican' : 'a dog', occupation: kind, quirk: '', mood: 'feral' }, fly: 0, seed: rand(0, 20) }; animals.push(a); return a; };
+  const spawnAnimal = (kind, x, z) => { const m = makeAnimal(kind); scene.add(m); const a = { kind, mesh: m, x, z, y: 0.2, heading: rand(0, 6), state: 'idle', timer: rand(0, 3), tx: x, tz: z, isAnimal: true, persona: { name: kind === 'pigeon' ? 'a pigeon' : kind === 'gull' ? 'a seagull' : kind === 'raccoon' ? 'a raccoon' : kind === 'pelican' ? 'a brown pelican' : kind === 'deer' ? 'a black-tailed deer' : 'a dog', occupation: kind, quirk: '', mood: 'feral' }, fly: 0, seed: rand(0, 20) }; animals.push(a); return a; };
   for (let i = 0; i < 2; i++) { const a = spawnAnimal('pelican', rand(-100, 100), rand(-100, 100)); a.state = 'soar'; a.airborne = true; a.y = 14; }
   for (let i = 0; i < 14; i++) { const n = nodes[Math.floor(Math.random() * nodes.length)]; spawnAnimal('pigeon', n.x + rand(-3, 3), n.z + rand(-3, 3)); }
   for (let i = 0; i < 6; i++) { const n = nodes[Math.floor(Math.random() * nodes.length)]; spawnAnimal('gull', n.x + rand(-3, 3), n.z + rand(-3, 3)); }
   for (let i = 0; i < 5; i++) { const s = pick(world.trashSpots); const a = spawnAnimal('raccoon', s.x, s.z + 1); a.home = s; }
+  { const d = spawnAnimal('deer', 0, 0); d.state = 'away'; d.airborne = true; d.timer = rand(4, 12); d.mesh.visible = false; }
   for (let i = 0; i < 4; i++) { const dp = world.dogPark; spawnAnimal('dog', rand(dp.x0, dp.x1), rand(dp.z0, dp.z1)).dog = true; }
 
   function pickTarget(e) {
@@ -161,6 +162,22 @@ export function buildNpcs(scene, world, count = 44) {
         a.mesh.rotation.x = a.peck ? Math.sin(t * 10 + a.x) * 0.4 : 0;
       }
       a.mesh.position.set(a.x, a.y, a.z); a.mesh.rotation.y = a.heading;
+    } else if (a.kind === 'deer') {
+      const f = world.forest; if (!f) return;
+      if (a.state === 'away') {
+        a.timer -= dt;
+        if (a.timer <= 0) { const s = pick(f.spots); a.x = s[0]; a.z = s[1]; a.tx = a.x; a.tz = a.z; a.state = 'graze'; a.timer = rand(40, 90); a.airborne = false; a.mesh.visible = true; }
+        return;
+      }
+      if (d2 < 49 && a.state !== 'flee') { a.state = 'flee'; a.timer = 4; a.tx = Math.max(f.x0 + 2, Math.min(f.x1 - 2, a.x + dx * 4 + rand(-6, 6))); a.tz = Math.max(f.z0 + 2, Math.min(f.z1 - 2, a.z + dz * 4 + rand(-6, 6))); }
+      a.timer -= dt;
+      if (a.state === 'flee') { if (a.timer <= 0) { a.state = 'away'; a.timer = rand(30, 90); a.airborne = true; a.mesh.visible = false; return; } }
+      else if (a.timer <= 0) { a.state = 'graze'; a.timer = rand(40, 90); }
+      else if (Math.random() < dt * 0.15) { const s = pick(f.spots); a.tx = s[0]; a.tz = s[1]; a.state = 'walk'; }
+      const vx = a.tx - a.x, vz = a.tz - a.z, dd = Math.hypot(vx, vz), sp = a.state === 'flee' ? 7 : a.state === 'walk' ? 1.2 : 0;
+      if (dd > 0.4 && sp) { a.x += vx / dd * sp * dt; a.z += vz / dd * sp * dt; a.heading = Math.atan2(vx, vz); } else if (a.state === 'walk') a.state = 'graze';
+      a.mesh.position.set(a.x, 0.02, a.z); a.mesh.rotation.y = a.heading;
+      a.mesh.rotation.x = a.state === 'graze' ? Math.sin(t * 0.8 + a.seed) * 0.08 : 0;
     } else if (a.kind === 'pelican') {
       const [wl, wr] = a.mesh.userData.wings;
       const setWings = (ang) => { wl.rotation.z = -ang; wr.rotation.z = ang; };

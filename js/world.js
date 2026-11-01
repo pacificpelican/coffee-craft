@@ -6,7 +6,7 @@ import { mulberry, rand, pick } from './util.js';
 
 export const C = [-93, -31, 31, 93];          // block centres
 export const R = [-124, -62, 0, 62, 124];     // road centre lines
-export const BOUNDS = { x0: -132, x1: 132, z0: -150, z1: 132 };
+export const BOUNDS = { x0: -132, x1: 184.5, z0: -150, z1: 132 };
 export const INT = { x: 2000, z: 0 };         // interiors live far away from the city
 const PARK = { bx: C[1], bz: C[2] };
 export const TERRACE_Y = 3.2;
@@ -278,10 +278,11 @@ export function buildWorld(scene, defList) {
     scrub.rotation.x = -Math.PI / 2; scrub.position.set(EX + 60, -0.02, (CZ + 210) / 2); add(scrub);
     for (let i = 0; i < 70; i++) {
       const s = rand(0.5, 2.6), x = EX + 2 + rnd() * 90, z = CZ + 4 + rnd() * (200 - CZ);
+      if (x < 188 && z > 66) continue;
       const r = box(s * rand(1, 1.8), s * rand(0.5, 1), s * rand(1, 1.8), pick(['#77746a', '#8a867a', '#5f5c54']), x, s * 0.25, z);
       r.rotation.y = rnd() * 3; add(r);
     }
-    for (let i = 0; i < 14; i++) { const s = rand(0.8, 1.6); const b = new THREE.Mesh(new THREE.ConeGeometry(s, s * 1.4, 5), mat('#4d5e3a')); b.position.set(EX + 4 + rnd() * 60, s * 0.5, CZ + 6 + rnd() * (180 - CZ)); add(b); }
+    for (let i = 0; i < 14; i++) { const s = rand(0.8, 1.6); const b = new THREE.Mesh(new THREE.ConeGeometry(s, s * 1.4, 5), mat('#4d5e3a')); b.position.set(EX + 4 + rnd() * 60, s * 0.5, CZ + 6 + rnd() * (180 - CZ)); if (b.position.x < 188 && b.position.z > 66) continue; add(b); }
 
     // north: sheer cliff face, ledges and a misty valley far below
     const face = new THREE.Mesh(new THREE.PlaneGeometry(CZ + 190, DEPTH), dbl(rockTex('#4a4742', 240, [10, 5]), '#ffffff'));
@@ -304,17 +305,81 @@ export function buildWorld(scene, defList) {
     const mist = new THREE.Mesh(new THREE.PlaneGeometry(320, 260), new THREE.MeshBasicMaterial({ color: '#b9c9d2', transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
     mist.rotation.x = -Math.PI / 2; mist.position.set(EX + 150, -34, CZ - 130); add(mist);
 
-    // fence the whole way, with warning signs along the cliff
-    const FX = EX - 1.4, z0 = -150, z1 = 132, len = z1 - z0;
+    // fence the whole way, with a wooded pocket (Fernwood) fenced out further in the south-east corner
+    const FX = EX - 1.4, z0 = -150, FZN = 69.2, FOX = 185.5, FZS = 132.4;
     const fm = mat('#9aa3a6', { transparent: true, opacity: 0.35 });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.2, len), fm); mesh.position.set(FX, 1.3, (z0 + z1) / 2); add(mesh);
-    add(box(0.12, 0.12, len, '#4a4f50', FX, 2.4, (z0 + z1) / 2)); add(box(0.1, 0.1, len, '#4a4f50', FX, 0.25, (z0 + z1) / 2));
-    for (let z = z0; z <= z1; z += 4) add(box(0.16, 2.6, 0.16, '#3a3f40', FX, 1.3, z));
+    const fenceRun = (ax, az, bx, bz) => {
+      const alongZ = Math.abs(bz - az) > Math.abs(bx - ax), L = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(alongZ ? 0.06 : L, 2.2, alongZ ? L : 0.06), fm); m.position.set(mx, 1.3, mz); add(m);
+      add(box(alongZ ? 0.12 : L, 0.12, alongZ ? L : 0.12, '#4a4f50', mx, 2.4, mz)); add(box(alongZ ? 0.1 : L, 0.1, alongZ ? L : 0.1, '#4a4f50', mx, 0.25, mz));
+      const n = Math.ceil(L / 4);
+      for (let k = 0; k <= n; k++) add(box(0.16, 2.6, 0.16, '#3a3f40', ax + (bx - ax) * k / n, 1.3, az + (bz - az) * k / n));
+    };
+    fenceRun(FX, z0, FX, FZN); fenceRun(FX, FZN, FOX, FZN); fenceRun(FOX, FZN, FOX, FZS); fenceRun(FX, FZS, FOX, FZS);
     for (let z = z0 + 10; z < CZ; z += 24) {
       const s = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshBasicMaterial({ map: signTexture(THREE, 'DANGER', '#b3261e', '#fff6dc', 'steep cliff · keep out'), side: THREE.DoubleSide }));
       s.position.set(FX - 0.12, 1.6, z); s.rotation.y = Math.PI / 2; add(s);
     }
-    solid(FX - 0.3, EX + 40, z0 - 20, z1 + 20, 99);
+    solid(FX - 0.3, 400, z0 - 20, FZN + 0.2, 99);
+    solid(FOX - 0.3, 400, FZN, 140, 99);
+    solid(FX, FOX + 1, FZS - 0.1, 140, 99);
+    buildForest(EX - 1, FZN + 0.4, FOX - 0.4, FZS - 0.4);
+  }
+
+  // Fernwood: a small wooded pocket off the east road, with a dirt path, a clearing, logs, ferns and the odd deer.
+  function buildForest(x0, z0, x1, z1) {
+    const gtex = canvasTex(128, 128, (g, w, h) => {
+      g.fillStyle = '#4c6e3a'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 260; i++) { g.fillStyle = pick(['#3f6030', '#5b7f44', '#6a8a4a', '#6b5a38', '#3a5a2c']); g.globalAlpha = 0.5; g.fillRect(rnd() * w, rnd() * h, 2 + rnd() * 5, 2 + rnd() * 3); }
+    }, THREE, true);
+    gtex.repeat.set((x1 - x0) / 6, (z1 - z0) / 6);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), new THREE.MeshLambertMaterial({ map: gtex }));
+    floor.rotation.x = -Math.PI / 2; floor.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2); add(floor);
+    // path: in from the road, winding to a clearing
+    const path = [[x0 + 1, 104], [146, 104], [152, 96], [160, 96], [166, 101]];
+    const clear = { x: 168, z: 101, r: 9 };
+    const dirt = '#8a6f4a';
+    for (let k = 0; k < path.length - 1; k++) {
+      const [ax, az] = path[k], [bx, bz] = path[k + 1], L = Math.hypot(bx - ax, bz - az);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(L + 1.5, 3), new THREE.MeshLambertMaterial({ color: dirt }));
+      m.position.set((ax + bx) / 2, 0.04, (az + bz) / 2);
+      m.rotation.set(-Math.PI / 2, 0, Math.atan2(az - bz, bx - ax)); add(m);
+    }
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(clear.r, 18), new THREE.MeshLambertMaterial({ color: '#7a9a54' }));
+    pad.rotation.x = -Math.PI / 2; pad.position.set(clear.x, 0.05, clear.z); add(pad);
+    const nearPath = (x, z, m) => {
+      if (Math.hypot(x - clear.x, z - clear.z) < clear.r + 1.5) return true;
+      for (let k = 0; k < path.length - 1; k++) {
+        const [ax, az] = path[k], [bx, bz] = path[k + 1], dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+        if (Math.hypot(x - (ax + t * dx), z - (az + t * dz)) < m) return true;
+      }
+      return false;
+    };
+    // trees (conifers) filling the rest, kept off the path and clearing
+    let placed = 0;
+    for (let tries = 0; tries < 400 && placed < 70; tries++) {
+      const x = x0 + 3 + rnd() * (x1 - x0 - 6), z = z0 + 2 + rnd() * (z1 - z0 - 4);
+      if (nearPath(x, z, 3.4)) continue;
+      const t = tree(x, z, 1.1 + rnd() * 0.9); t.position.y = 0.02; placed++;
+    }
+    // ferns, stumps and logs
+    for (let i = 0; i < 60; i++) {
+      const x = x0 + 2 + rnd() * (x1 - x0 - 4), z = z0 + 1 + rnd() * (z1 - z0 - 2);
+      if (nearPath(x, z, 1.8)) continue;
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.5 + rnd() * 0.4, 0.7 + rnd() * 0.5, 5), mat(pick(['#3f7a3a', '#4f8a44', '#5d9a4c'])));
+      f.position.set(x, 0.35, z); add(f);
+    }
+    for (let i = 0; i < 6; i++) {
+      const x = x0 + 4 + rnd() * (x1 - x0 - 8), z = z0 + 3 + rnd() * (z1 - z0 - 6);
+      if (nearPath(x, z, 2.6)) continue;
+      const lg = box(2.6, 0.55, 0.6, '#6a4a2c', x, 0.3, z); lg.rotation.y = rnd() * 3; add(lg);
+    }
+    // clearing: benches and a picnic table
+    bench(clear.x - 5, 0.05, clear.z - 2, Math.PI / 2); bench(clear.x + 5, 0.05, clear.z + 1, -Math.PI / 2); picnic(clear.x, 0.05, clear.z + 4);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.1), new THREE.MeshBasicMaterial({ map: signTexture(THREE, 'Fernwood', '#3f5a2e', '#fff6dc', 'quiet woods · deer crossing'), side: THREE.DoubleSide }));
+    sg.position.set(x0 + 3, 3.2, 96.6); add(sg); add(box(0.2, 3, 0.2, '#5a3a22', x0 + 1.2, 1.5, 96.6)); add(box(0.2, 3, 0.2, '#5a3a22', x0 + 4.8, 1.5, 96.6));
+    // walk-able spots for the deer: the clearing and path, plus gaps between trees
+    world.forest = { x0, x1, z0, z1, spots: [[clear.x - 2, clear.z - 3], [clear.x + 3, clear.z + 2], [clear.x, clear.z], [156, 96], [148, 102], [175, 93], [176, 108], [160, 118], [150, 124], [174, 80], [140, 80]] };
   }
 
   function buildCanal() {
@@ -502,7 +567,9 @@ export function buildWorld(scene, defList) {
     for (let k = 0; k < 40; k++) {
       const a = rnd() * Math.PI * 2, r = 190 + rnd() * 60;
       const h = 30 + rnd() * 70;
-      const b = box(rand(10, 22), h, rand(10, 22), pick(['#5d6a70', '#6a6e6c', '#4a5a60']), Math.cos(a) * r, h / 2, Math.sin(a) * r - 10);
+      const sx = Math.cos(a) * r, sz = Math.sin(a) * r - 10;
+      if (sx > 100 && sz > 50) continue; // keep the south-east woods clear
+      const b = box(rand(10, 22), h, rand(10, 22), pick(['#5d6a70', '#6a6e6c', '#4a5a60']), sx, h / 2, sz);
       add(b);
     }
     // Smith-tower-like landmark (after the sketch in ./art)

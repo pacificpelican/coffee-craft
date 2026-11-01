@@ -123,6 +123,15 @@ export function makeAnimal(kind) {
     for (const x of [-0.12, 0.12]) { const e = box(0.1, 0.1, 0.06, '#5a5a56'); e.position.set(x, 0.72, 0.5); g.add(e); }
     for (let i = 0; i < 4; i++) { const r = box(0.2, 0.2, 0.18, i % 2 ? '#2b2f2a' : '#a8a8a0'); r.position.set(0, 0.5, -0.55 - i * 0.18); g.add(r); }
     for (const x of [-0.18, 0.18]) for (const z of [-0.3, 0.3]) { const l = box(0.1, 0.2, 0.1, '#3f3f3c'); l.position.set(x, 0.1, z); g.add(l); }
+  } else if (kind === 'deer') {
+    const c = '#a8774a';
+    const b = box(0.55, 0.6, 1.3, c); b.position.y = 1.1; g.add(b);
+    const nk = box(0.22, 0.7, 0.24, c); nk.position.set(0, 1.55, 0.7); nk.rotation.x = 0.4; g.add(nk);
+    const hd = box(0.28, 0.3, 0.45, '#b98a5a'); hd.position.set(0, 1.9, 0.95); g.add(hd);
+    const ns = box(0.1, 0.1, 0.08, '#2b2f2a'); ns.position.set(0, 1.84, 1.2); g.add(ns);
+    const tl = box(0.14, 0.2, 0.1, '#f2f0e6'); tl.position.set(0, 1.25, -0.68); g.add(tl);
+    for (const x of [-0.12, 0.12]) { const e = box(0.1, 0.18, 0.05, c); e.position.set(x * 1.6, 2.1, 0.85); g.add(e); const a = box(0.04, 0.4, 0.04, '#d8c8a0'); a.position.set(x * 1.4, 2.25, 0.88); a.rotation.z = x * 3; g.add(a); }
+    for (const x of [-0.18, 0.18]) for (const z of [-0.45, 0.45]) { const l = box(0.1, 0.85, 0.1, '#7a5230'); l.position.set(x, 0.43, z); g.add(l); }
   } else if (kind === 'dog') {
     const c = pick(['#b08a5a', '#3f3f3c', '#d9c9a0', '#8a5a3c']);
     const b = box(0.35, 0.35, 0.7, c); b.position.y = 0.5; g.add(b);

@@ -50,7 +50,7 @@ export function createPhone(G) {
   function mapApp(el) {
     const { world, player, tram } = G.mapInfo();
     const R = [-124, -62, 0, 62, 124];
-    const X0 = -182, X1 = 140, Z0 = -162, Z1 = 140;
+    const X0 = -182, X1 = 192, Z0 = -162, Z1 = 140;
     const e = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const pb = world.parkBounds, line = [[-62, -62], [0, -62], [0, 0], [124, 0], [124, 62], [-62, 62]];
     const svg = `<svg viewBox="${X0} ${Z0} ${X1 - X0} ${Z1 - Z0}" xmlns="http://www.w3.org/2000/svg" class="mapsvg">
@@ -59,6 +59,7 @@ export function createPhone(G) {
       <rect x="-134" y="-150" width="266" height="282" fill="#bdb7a3"/>
       ${R.map((r) => `<rect x="${r - 6}" y="-150" width="12" height="282" fill="#5b6266"/><rect x="-134" y="${r - 6}" width="266" height="12" fill="#5b6266"/>`).join('')}
       <rect x="-134" y="-154" width="266" height="24" fill="#3a4044" opacity=".55"/>
+      <rect x="130" y="69" width="56" height="64" fill="#5f8a4a" stroke="#3f6a32" stroke-width="1.5"/><text x="158" y="104" class="mt" text-anchor="middle" fill="#fff">Fernwood</text>
       ${pb ? `<rect x="${pb.x0}" y="${pb.z0}" width="${pb.x1 - pb.x0}" height="${pb.z1 - pb.z0}" fill="#7da35a" stroke="#4f7a3a" stroke-width="1.5"/><text x="${(pb.x0 + pb.x1) / 2}" y="${(pb.z0 + pb.z1) / 2}" class="mt" text-anchor="middle">Baloo's Park</text>` : ''}
       <polyline points="${line.map((p) => p.join(',')).join(' ')} ${line[0].join(',')}" fill="none" stroke="#d9772b" stroke-width="2.4" stroke-dasharray="6 3"/>
       ${world.doors.map((d) => `<circle cx="${d.x}" cy="${d.z}" r="2.2" fill="#8a4b2a"><title>${e(d.label)}</title></circle>`).join('')}
