@@ -160,14 +160,38 @@ function wheel(r, w, x, y, z) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 10), mat('#1f2320')); m.rotation.z = Math.PI / 2; m.position.set(x, y, z); return m;
 }
 
+function shadeHex(hex, f) { const c = new THREE.Color(hex); c.multiplyScalar(f); return '#' + c.getHexString(); }
+
 export function makeVehicle(type) {
   const g = new THREE.Group();
   const color = pick(TOY);
   if (type === 'car') {
-    const b = caps(1.0, 2.0, color, 1, 0.62); b.position.y = 0.75; g.add(b);
-    const cab = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), mat('#cfe0e4')); cab.scale.set(0.95, 0.65, 1.2); cab.position.set(0, 1.3, -0.1); g.add(cab);
-    for (const x of [-0.95, 0.95]) for (const z of [-1.3, 1.3]) g.add(wheel(0.38, 0.28, x, 0.38, z));
-    const hl = box(1.3, 0.14, 0.05, '#f2e6a8'); hl.position.set(0, 0.8, 2.0); g.add(hl);
+    const roll = Math.random();
+    if (roll < 0.3) { // classic round car
+      const b = caps(1.0, 2.0, color, 1, 0.62); b.position.y = 0.75; g.add(b);
+      const cab = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), mat('#cfe0e4')); cab.scale.set(0.95, 0.65, 1.2); cab.position.set(0, 1.3, -0.1); g.add(cab);
+      for (const x of [-0.95, 0.95]) for (const z of [-1.3, 1.3]) g.add(wheel(0.38, 0.28, x, 0.38, z));
+      const hl = box(1.3, 0.14, 0.05, '#f2e6a8'); hl.position.set(0, 0.8, 2.0); g.add(hl);
+    } else if (roll < 0.88) { // boxy crossover SUV
+      const b = box(2.0, 0.95, 4.2, color); b.position.y = 0.95; g.add(b);
+      const cab = box(1.84, 0.8, 2.9, color); cab.position.set(0, 1.8, -0.35); g.add(cab);
+      const gl = box(1.88, 0.55, 2.6, '#2f3b40'); gl.position.set(0, 1.85, -0.35); g.add(gl);
+      const roof = box(1.9, 0.1, 2.95, shadeHex(color, 0.82)); roof.position.set(0, 2.25, -0.35); g.add(roof);
+      const rack = box(1.5, 0.08, 2.2, '#2b2f2a'); rack.position.set(0, 2.34, -0.35); if (Math.random() < 0.5) g.add(rack);
+      for (const x of [-0.98, 0.98]) for (const z of [-1.35, 1.35]) g.add(wheel(0.42, 0.28, x, 0.42, z));
+      const hl = box(1.6, 0.16, 0.05, '#f2e6a8'); hl.position.set(0, 1.05, 2.12); g.add(hl);
+      const gr = box(1.2, 0.3, 0.05, '#2b2f2a'); gr.position.set(0, 0.7, 2.12); g.add(gr);
+      const tl = box(1.6, 0.14, 0.05, '#b33a2a'); tl.position.set(0, 1.1, -2.12); g.add(tl);
+    } else { // pickup truck
+      const b = box(2.0, 0.85, 4.6, color); b.position.y = 0.9; g.add(b);
+      const cab = box(1.9, 0.9, 1.7, color); cab.position.set(0, 1.78, 0.8); g.add(cab);
+      const gl = box(1.94, 0.55, 1.45, '#2f3b40'); gl.position.set(0, 1.85, 0.82); g.add(gl);
+      const bed = box(1.7, 0.5, 1.9, '#2f3234'); bed.position.set(0, 1.4, -1.4); g.add(bed);
+      for (const x of [-0.98, 0.98]) { const w = box(0.06, 0.4, 2.0, color); w.position.set(x * 0.9, 1.5, -1.4); g.add(w); }
+      for (const x of [-1, 1]) for (const z of [-1.4, 1.45]) g.add(wheel(0.46, 0.3, x, 0.46, z));
+      const hl = box(1.6, 0.16, 0.05, '#f2e6a8'); hl.position.set(0, 1.0, 2.32); g.add(hl);
+      const gr = box(1.2, 0.3, 0.05, '#2b2f2a'); gr.position.set(0, 0.7, 2.32); g.add(gr);
+    }
   } else if (type === 'bus') {
     const b = caps(1.35, 6.4, '#e3b93c', 1, 0.95); b.position.y = 1.75; g.add(b);
     const band = box(2.72, 0.7, 9.2, '#2f3b40'); band.position.y = 2.15; g.add(band);
