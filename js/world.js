@@ -93,7 +93,7 @@ export function buildWorld(scene, defList) {
   function filler(i, j, slot, r) {
     const kinds = ['apartments', 'apartments', 'apartments', 'derelict', 'lot'];
     const type = r() < 0.12 ? 'derelict' : 'apartments';
-    const names = ['Cedar Court', 'Maple Flats', 'Harbor View Apts', 'Fir Street Lofts', 'Wren Building', 'Foghorn Apartments', 'Tidewater Place', 'Alder House'];
+    const names = ['Cedar Court', 'Maple Flats', 'Harbor View Apts', 'Fir Street Lofts', 'Foghorn Apartments', 'Tidewater Place', 'Alder House'];
     return { id: `fill_${i}${j}${slot}`, name: type === 'derelict' ? 'Vacant Building' : names[Math.floor(r() * names.length)], type, block: [i, j], slot, color: pick(['#6c7d72', '#8a7a5a', '#7c6f60', '#6a7a86', '#8a8f78']), floors: 3 + Math.floor(r() * 4) };
   }
 
@@ -189,6 +189,16 @@ export function buildWorld(scene, defList) {
       world.doors.push({ type: 'door', bizId: def.backDoor.id, special: sp, x: p.x, z: p.z, r: 2.4, label: def.backDoor.name });
       world.alleyDoors.push({ x: p.x, z: p.z });
       if (sp === 'dojo') world.dojoDoor = { x: p.x, z: p.z };
+    }
+    if (def.home) {
+      world.doors.push({ type: 'door', bizId: def.id, special: 'home', x: doorW.x, z: doorW.z, r: 2.6, label: `${def.name} (your apartment)` });
+      // a pink-lit window on the front, so you can find home from the street
+      const wg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.2), new THREE.MeshBasicMaterial({ color: '#ff7ac8' }));
+      wg.position.set(6, 10.5, fz + 0.06); g.add(wg);
+      const halo = new THREE.Mesh(new THREE.PlaneGeometry(5, 4.4), new THREE.MeshBasicMaterial({ color: '#ff5fb8', transparent: true, opacity: 0.25, depthWrite: false }));
+      halo.position.set(6, 10.5, fz + 0.04); g.add(halo);
+      const pl = new THREE.PointLight('#ff6fc0', 14, 18); pl.position.set(6, 10.5, fz + 2); g.add(pl);
+      world.homeGlow = { window: wg, halo, light: pl };
     }
     const rec = { id: def.id, def, x: cx, z: cz, w, d, h: hgt, group: g, door: { x: doorW.x, z: doorW.z }, derelict };
     world.buildings[def.id] = rec;

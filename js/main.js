@@ -518,9 +518,28 @@ function aiNewCrystal(done) {
   }).catch(() => {}).finally(() => { aiCrystalPending = false; });
 }
 
+// Your apartment at the Wren Building: a free hotel-style room with a pink-glow window.
+function enterHome() {
+  sfx('door');
+  const hr = Math.floor(state.minutes / 60) % 24, night = hr >= 19 || hr < 6;
+  const lines = night
+    ? ['Across the street a pink neon sign hums; the whole room swims in rose light.', 'Rain ticks on the glass. The pink glow turns every puddle into a little sunset.', 'The pink light slides over the ceiling every time a streetcar passes.']
+    : ['Grey daylight, but the window still has a faint pink tint from last night\u2019s sign.', 'The pink-tinted glass makes the drizzle look like falling petals.', 'A pigeon sits on the sill, lit pink by the sign it has outlived.'];
+  const sky = night ? 'linear-gradient(#2a1740,#c2428f 70%,#ff8ccf)' : 'linear-gradient(#9aa6ad,#c9a3b8 80%,#f2b6d6)';
+  const win = h('div', { style: `height:170px;border-radius:10px;border:8px solid #4a3020;background:${sky};position:relative;overflow:hidden;box-shadow:0 0 40px #ff6fc0 inset, 0 0 24px #ff6fc088` },
+    h('div', { style: 'position:absolute;left:0;right:0;bottom:0;height:46px;background:repeating-linear-gradient(90deg,#2b2536 0 22px,#3a3046 22px 40px);opacity:.9' }),
+    h('div', { style: 'position:absolute;left:50%;top:0;bottom:0;width:6px;background:#4a3020' }),
+    h('div', { style: 'position:absolute;left:0;right:0;top:50%;height:6px;background:#4a3020' }));
+  openModal((c) => {
+    c.append(h('h3', {}, 'Wren Building \u00b7 your apartment'), win, h('p', {}, lines[Math.floor(Math.random() * lines.length)]),
+      h('p', { class: 'small' }, `Cash on hand: ${money(state.bank.cash)}. No charge to rest here.`),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => sleep({ name: 'home' }, 0) }, '\ud83d\udecf Sleep until morning (free)'), h('button', { class: 'btn alt', onclick: () => { closeModal(); phone.open(); } }, '\ud83d\udcf1 Phone'), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
+  });
+}
 function enterVenue(d) {
   if (d.special === 'dojo') return enterDojo();
   if (d.special === 'crystal') return enterCrystalShop();
+  if (d.special === 'home') return enterHome();
   const def = defOf(d.bizId) || {};
   // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
   const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);
@@ -582,9 +601,9 @@ function aiNewArrival(b, def, done) {
     seen[b.id] = state.day; notify(`✨ New at ${b.name}: ${name}`, { sound: false }); done();
   }).catch(() => {}).finally(() => aiStockPending.delete(b.id));
 }
-function sleep(b) {
-  if (state.bank.cash < 120) return notify('Not enough funds.');
-  state.bank.cash -= 120; closeModal();
+function sleep(b, cost = 120) {
+  if (state.bank.cash < cost) return notify('Not enough funds.');
+  state.bank.cash -= cost; closeModal();
   const f = h('div', { style: 'position:fixed;inset:0;background:#000;z-index:50;transition:opacity 1s;opacity:0' }); document.body.append(f);
   requestAnimationFrame(() => { f.style.opacity = 1; });
   setTimeout(() => {
@@ -611,7 +630,8 @@ function tick(dt) {
   state.day = Math.floor(state.minutes / 1440) + 1;
   eco.advance(state, dt * 2);
   state.weather = env.weather;
-  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
+  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
+  if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
   traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
