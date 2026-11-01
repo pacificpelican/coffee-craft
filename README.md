@@ -30,7 +30,7 @@ Open <http://localhost:8000>. Without PHP (any static server) the game still pla
 
 The ⏸ button opens the pause menu (Settings, screenshot, mute); 📱 opens the phone.
 
-Camera: `Q`/`E` or right-mouse-button drag rotate, mouse wheel zooms; on touch, twist with two fingers to rotate and pinch to zoom. Movement is camera-relative.
+Camera: `Q`/`E`, or hold the left (or right) mouse button and drag sideways, rotate; mouse wheel zooms; on touch, twist with two fingers to rotate and pinch to zoom. A plain left click (no drag) still opens clickable signs. Movement is camera-relative.
 
 ## Saving
 

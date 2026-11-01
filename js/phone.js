@@ -205,7 +205,7 @@ export function createPhone(G) {
       ['👍 Interact / yes', '. (period)'],
       ['⛔ No / cancel', ', (comma)'],
       ['▶️ Friendly / enter / sit / ride', "' (apostrophe): enter doors, sit on benches, ride scooters, board the streetcar"],
-      ['Rotate camera', 'Q / E, right-mouse drag, or two-finger twist'],
+      ['Rotate camera', 'Q / E, hold left or right mouse and drag, or two-finger twist'],
       ['Zoom camera', 'Mouse wheel or two-finger pinch'],
       ['Pause', 'P'],
       ['Phone', 'Tab or the 📱 button'],

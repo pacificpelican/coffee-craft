@@ -154,8 +154,8 @@ function wireInput() {
   document.querySelectorAll('.ab').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(b.dataset.k); b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); }));
   // clicking billboards
   const ray = new THREE.Raycaster();
-  $('#game').addEventListener('pointerdown', (e) => {
-    if (paused || e.button !== 0) return;
+  $('#game').addEventListener('pointerup', (e) => {
+    if (paused || e.button !== 0 || cam.dragged) return;
     ray.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), camera);
     const hit = ray.intersectObjects(world.clickables.map((c) => c.mesh), false)[0];
     if (hit) { const c = world.clickables.find((c) => c.mesh === hit.object); if (c) window.open(c.url, '_blank', 'noopener'); }
@@ -168,19 +168,24 @@ function wireCamera() {
   const el = $('#game'); const pts = new Map();
   el.addEventListener('wheel', (e) => { if (paused) return; e.preventDefault(); setZoom(cam.zoomT * (e.deltaY > 0 ? 1.1 : 0.9)); }, { passive: false });
   const two = () => { const [a, b] = [...pts.values()]; return { ang: Math.atan2(b.y - a.y, b.x - a.x), dist: Math.hypot(b.x - a.x, b.y - a.y) }; };
-  let last = null, drag = null;
+  let last = null, drag = null, dragMoved = 0;
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   el.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button === 2) { drag = e.clientX; el.setPointerCapture(e.pointerId); return; }
+    cam.dragged = false;
+    if (e.pointerType === 'mouse' && (e.button === 2 || e.button === 0)) { drag = e.clientX; dragMoved = 0; cam.dragged = false; el.setPointerCapture(e.pointerId); return; }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); last = pts.size === 2 ? two() : null;
   });
   el.addEventListener('pointermove', (e) => {
-    if (drag !== null) { if (!paused) cam.yaw -= (e.clientX - drag) * 0.008; drag = e.clientX; return; }
+    if (drag !== null) {
+      dragMoved += Math.abs(e.clientX - drag);
+      if (dragMoved > 4) cam.dragged = true;
+      if (!paused && cam.dragged) cam.yaw -= (e.clientX - drag) * 0.008; drag = e.clientX; return;
+    }
     if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size !== 2 || paused) return;
     const n = two(); if (last) { cam.yaw -= angDiff(0, n.ang - last.ang); if (last.dist > 10) setZoom(cam.zoomT * last.dist / n.dist); } last = n;
   });
-  const up = (e) => { pts.delete(e.pointerId); last = null; if (e.button === 2) drag = null; };
+  const up = (e) => { pts.delete(e.pointerId); last = null; if (e.button === 2 || e.button === 0) drag = null; };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
 function readMove() {
