@@ -41,10 +41,15 @@ export function buildTraffic(scene, world) {
 
   function headingOf(a) { return a.axis === 'z' ? (a.dir > 0 ? 0 : Math.PI) : (a.dir > 0 ? Math.PI / 2 : -Math.PI / 2); }
 
-  function update(dt) {
+  function update(dt, foot) {
     for (const a of agents) {
       // follow gap
       let target = a.vmax;
+      if (a.type === 'bus') {
+        // buses pause for a pedestrian close by, and stop when a rider asks to get off
+        if (a.stopReq) target = 0;
+        else if (!a.rider && foot && Math.hypot(a.mesh.position.x - foot.x, a.mesh.position.z - foot.z) < 6) target = 0;
+      }
       for (const o of agents) {
         if (o === a || o.axis !== a.axis || o.c !== a.c || o.dir !== a.dir) continue;
         const gap = (o.p - a.p) * a.dir;

@@ -242,6 +242,7 @@ export function createPhone(G) {
     const rows = [
       ['Move', 'Arrow keys / WASD / on-screen pad'],
       ['Run', 'Hold 👍 (. key or the on-screen button) while moving'],
+  ['Bus', '▶️ next to a bus (it pauses for you) to board; ▶️ again to request a stop'],
       ['💬 Talk', '/ (or the 💬 button) to a nearby neighbor or animal'],
       ['👍 Interact / yes', '. (period)'],
       ['⛔ No / cancel', ', (comma)'],

@@ -93,7 +93,7 @@ async function boot() {
   if (saved) $('#continue').classList.remove('hidden');
   $('#intro-status').textContent = server.available ? `Server: ${server.storage}${server.ai ? ' · AI: ' + server.aiProvider : ' · AI off'}` : 'Static mode (no PHP): saves stay in this browser.';
   renderer.setAnimationLoop(frame);
-  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G, tram: tramSys.tram, npcSys };
+  window.__cc = { state, get player() { return player; }, world, THREE, scene, camera, eco, G, tram: tramSys.tram, traffic, npcSys };
 }
 
 function wireEconomy() {
@@ -257,6 +257,10 @@ function nearbyTargets() {
   if (player.inside) return out;
   for (const d of world.doors) { const dd = Math.hypot(d.x - player.x, d.z - player.z); if (dd < (d.r || 2.6) + 0.6) out.push({ kind: 'door', d, dist: dd, label: 'Enter ' + d.label }); }
   for (const s of scooters) { if (s.riding) continue; const dd = Math.hypot(s.x - player.x, s.z - player.z); if (dd < 2.4) out.push({ kind: 'scooter', s, dist: dd, label: 'Ride scooter' }); }
+  for (const a of traffic.agents) {
+    if (a.type !== 'bus') continue; const dd = Math.hypot(a.mesh.position.x - player.x, a.mesh.position.z - player.z);
+    if (dd < 7 && a.v < 1.5) out.push({ kind: 'bus', a, dist: dd, label: 'Board bus' });
+  }
   for (const it of world.interactables) {
     if (!it.r) continue; const dd = Math.hypot(it.x - player.x, it.z - player.z);
     if (dd < it.r + 0.6) out.push({ kind: it.type, it, dist: dd, label: it.type === 'bench' ? (player.sitting ? 'Stand up' : 'Sit') : it.type === 'court' ? 'Play pickleball' : it.type === 'poster' ? 'Open sf3am.com' : it.type === 'tramstop' ? (tramSys.tram.atStop && tramSys.tram.dwell > 0 ? 'Board streetcar' : 'Streetcar stop — wait for it') : it.label });
@@ -268,6 +272,7 @@ const npcNear = (r = 3.2) => nearestOf([...npcSys.list.filter((n) => n.state !==
 function handleActions() {
   const e = input.edge; input.edge = {};
   if (player.ride === 'tram') { if (e.friendly || e.yes) alightTram(); return; }
+  if (player.ride === 'bus') { if (e.friendly || e.yes) { player.bus.stopReq = true; notify('Stop requested — the bus will pull up.', { sound: false, ms: 2000 }); sfx('bell'); } return; }
   if (player.scooter) return scooterActions(e);
   const t = nearbyTargets()[0];
   if (e.friendly) {
@@ -291,6 +296,14 @@ function activate(t) {
   if (t.kind === 'poster') return window.open(t.it.url, '_blank', 'noopener');
   if (t.kind === 'court') return openModal((c) => playPickleball(c, G_mini(), closeModal));
   if (t.kind === 'tramstop') return boardTram();
+  if (t.kind === 'bus') { player.ride = 'bus'; player.bus = t.a; t.a.rider = true; t.a.stopReq = false; playerMesh.visible = false; sfx('door'); notify('On the bus! ▶️ to request a stop and get off.', { sound: false, ms: 5000 }); }
+}
+function alightBus() {
+  const a = player.bus, c = a.axis === 'z' ? [a.c, a.mesh.position.z] : [a.mesh.position.x, a.c];
+  let dx = a.mesh.position.x - c[0], dz = a.mesh.position.z - c[1]; const l = Math.hypot(dx, dz) || 1;
+  const [nx, nz] = collide(c[0] + dx / l * 7.5, c[1] + dz / l * 7.5, 0.2, 0.45);
+  player.x = nx; player.z = nz; player.y = groundHeight(world, nx, nz);
+  a.rider = false; a.stopReq = false; player.bus = null; player.ride = null; playerMesh.visible = true; sfx('door');
 }
 const standUp = () => { player.sitting = null; };
 function boardTram() {
@@ -498,13 +511,13 @@ function tick(dt) {
   state.weather = env.weather;
   env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow);
   if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt); tramSys.update(dt);
+  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);
   // prompt
   const tg = nearbyTargets()[0]; const n = npcNear(3.2);
-  prompt_(player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
+  prompt_(player.ride === 'bus' ? (player.bus.stopReq ? 'Stopping…' : '▶️ request stop') : player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
   // rain sfx & night traffic hum skipped; random chats
   msgT -= dt; if (msgT <= 0) { msgT = rand(80, 160); contactMessage(); }
   saveT += dt; if (saveT > 45) { saveT = 0; saveLocal(); }
@@ -541,6 +554,9 @@ function movePlayer(dt) {
   if (player.eating > 0) player.eating -= dt;
   if (player.ride === 'tram') {
     const p = tramSys.tram.pos; player.x = p.x; player.z = p.z; player.y = 0.9; player.speed = 0;
+  } else if (player.ride === 'bus') {
+    const a = player.bus, p = a.mesh.position; player.x = p.x; player.z = p.z; player.y = 1.2; player.speed = 0; player.heading = a.h;
+    if (a.stopReq && a.v < 0.5) alightBus();
   } else if (player.scooter) {
     const s = player.scooter;
     s.thr = (s.thr || 0) - dt * 0.6; const acc = s.thr > 0 ? 9 : 0;
