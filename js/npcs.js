@@ -127,6 +127,7 @@ export function buildNpcs(scene, world, count = 44) {
         pickTarget(e);
       } else {
         e.x += (vx / dist) * spd * dt; e.z += (vz / dist) * spd * dt;
+        if (world.pushVehicles) [e.x, e.z] = world.pushVehicles(e.x, e.z, 0.4);
         const th = Math.atan2(vx, vz); e.heading += angDiff(e.heading, th) * Math.min(1, dt * 8);
       }
       if (!e.mesh.visible && e.state !== 'inside') { e.mesh.visible = true; if (e.pet) e.pet.mesh.visible = e.pet.leash.visible = true; }

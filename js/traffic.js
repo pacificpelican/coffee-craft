@@ -17,7 +17,7 @@ export function buildTraffic(scene, world) {
     a.h = headingOf(a); agents.push(a);
   }
   // parked cars along the curbs
-  const parked = [];
+  const parked = [], solids = [];
   for (const c of R) for (const axis of ['x', 'z']) for (const side of [-1, 1]) {
     for (let p = -118; p <= 118; p += 5.4) {
       if (R.some((n) => Math.abs(p - n) < 9)) continue;
@@ -28,6 +28,7 @@ export function buildTraffic(scene, world) {
       else { m.position.set(p, 0, c + off); m.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2; }
       m.rotation.y += rand(-0.05, 0.05);
       scene.add(m); parked.push(m);
+      solids.push(m);
     }
   }
   // interstate traffic
@@ -41,10 +42,43 @@ export function buildTraffic(scene, world) {
 
   function headingOf(a) { return a.axis === 'z' ? (a.dir > 0 ? 0 : Math.PI) : (a.dir > 0 ? Math.PI / 2 : -Math.PI / 2); }
 
-  function update(dt, foot) {
+  // Half-width / half-length of each vehicle's footprint, used for collision and braking.
+  const HALF = { car: [1.05, 2.3], bus: [1.4, 4.8], motorcycle: [0.45, 1.2], bicycle: [0.35, 1.0], scooter: [0.35, 0.9] };
+  function pushOut(m, hw, hl, x, z, r) {
+    const h = m.rotation.y, c = Math.cos(h), s = Math.sin(h);
+    const dx = x - m.position.x, dz = z - m.position.z;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c;
+    const cx = clamp(lx, -hw, hw), cz = clamp(lz, -hl, hl);
+    let ex = lx - cx, ez = lz - cz; const d2 = ex * ex + ez * ez;
+    if (d2 >= r * r) return null;
+    if (d2 > 1e-6) { const d = Math.sqrt(d2); ex = ex / d * r - ex; ez = ez / d * r - ez; }
+    else { const px = hw - Math.abs(lx), pz = hl - Math.abs(lz); if (px < pz) { ex = (lx < 0 ? -hw - r : hw + r) - lx; ez = 0; } else { ez = (lz < 0 ? -hl - r : hl + r) - lz; ex = 0; } }
+    return [ex * c + ez * s, -ex * s + ez * c];
+  }
+  // Moves a walking circle (x,z,r) out of any parked or moving vehicle.
+  function push(x, z, r) {
+    for (let pass = 0; pass < 2; pass++) {
+      for (const m of solids) {
+        if (Math.abs(m.position.x - x) > 6 || Math.abs(m.position.z - z) > 6) continue;
+        const o = pushOut(m, 1.0, 2.1, x, z, r); if (o) { x += o[0]; z += o[1]; }
+      }
+      for (const a of agents) {
+        const m = a.mesh; if (Math.abs(m.position.x - x) > 8 || Math.abs(m.position.z - z) > 8) continue;
+        const [hw, hl] = HALF[a.type]; const o = pushOut(m, hw, hl, x, z, r); if (o) { x += o[0]; z += o[1]; }
+      }
+    }
+    return [x, z];
+  }
+
+  function update(dt, foot, walkers) {
     for (const a of agents) {
       // follow gap
       let target = a.vmax;
+      // brake for anyone on foot standing in the lane ahead
+      const hl = HALF[a.type][1], hw = HALF[a.type][0], fs = Math.sin(a.h), fc = Math.cos(a.h), px = a.mesh.position.x, pz = a.mesh.position.z;
+      const look = hl + 2 + a.v * 0.7;
+      const ahead = (f) => { const dx = f.x - px, dz = f.z - pz; const lz = dx * fs + dz * fc; if (lz < 0 || lz > look) return false; const lx = dx * fc - dz * fs; return Math.abs(lx) < hw + 1.1; };
+      if ((foot && ahead(foot)) || (walkers && walkers.some((w) => w.mesh.visible && w.state !== 'inside' && ahead(w)))) target = 0;
       if (a.type === 'bus') {
         // buses pause for a pedestrian close by, and stop when a rider asks to get off
         if (a.stopReq) target = 0;
@@ -89,7 +123,7 @@ export function buildTraffic(scene, world) {
   }
   function turnAround(a, n, oldC) { a.axis = a.axis === 'x' ? 'z' : 'x'; a.p = oldC; a.c = n; a.dir = oldC > 0 ? -1 : 1; }
 
-  return { agents, update };
+  return { agents, update, push };
 }
 
 // ------------------------------------------------------------------ streetcar

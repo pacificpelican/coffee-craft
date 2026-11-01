@@ -91,6 +91,7 @@ async function boot() {
   world = buildWorld(scene, DATA.businesses);
   env = buildEnvironment(scene, renderer);
   traffic = buildTraffic(scene, world);
+  world.pushVehicles = traffic.push;
   tramSys = buildStreetcar(scene, world);
   rideshare = buildRideshare(scene, world, {
     waiting: (s) => { notify(`🚗 Your Robot Driver (${s.plate}, white ${s.style}) is here. Look for the flashing lights and press ▶️ next to it.`, { sound: false, ms: 6000 }); sfx('bell'); },
@@ -724,7 +725,7 @@ function tick(dt) {
   state.weather = env.weather;
   env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
   if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player); tramSys.update(dt); rideshare.update(dt, traffic.agents);
+  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list); tramSys.update(dt); rideshare.update(dt, traffic.agents);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);
@@ -758,6 +759,7 @@ function collide(x, z, y, r) {
     if (d2 > 1e-6) { const d = Math.sqrt(d2); x = cx + (dx / d) * r; z = cz + (dz / d) * r; }
     else { const l = x - c.x0, rr = c.x1 - x, tp = z - c.z0, bt = c.z1 - z; const m = Math.min(l, rr, tp, bt); if (m === l) x = c.x0 - r; else if (m === rr) x = c.x1 + r; else if (m === tp) z = c.z0 - r; else z = c.z1 + r; }
   }
+  if (y < 2 && traffic) [x, z] = traffic.push(x, z, r);
   return [x, z];
 }
 
