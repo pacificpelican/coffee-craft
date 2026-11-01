@@ -412,11 +412,11 @@ function pickRoastStyles() { return DATA.roastStyles.filter((r) => state.roastsU
 
 function consume(b, item, price) {
   if (state.bank.cash < price) { notify('Your bank balance is too low.'); return false; }
-  state.bank.cash -= price; sfx(item[2] === 'beer' ? 'sip' : 'eat');
+  state.bank.cash -= price; sfx(item[2] === 'beer' || item[2] === 'cider' ? 'sip' : 'eat');
   if (!state.diary.some((d) => d.name === item[0])) state.diary.push({ name: item[0], kind: kindFor(item[0], item[2]) || item[2], where: b.name, day: state.day });
   state.points += 2;
   player.eating = 2.2; notify(`😋 You enjoy the ${item[0]}.`, { sound: false });
-  if (item[2] === 'beer') state.buzzed = { type: 'booze', until: state.minutes + 60 };
+  if (item[2] === 'beer' || item[2] === 'cider') state.buzzed = { type: 'booze', until: state.minutes + 60 };
   return true;
 }
 // Item picture: tagged/keyword icon first; otherwise a plain platter that an AI-drawn SVG replaces (cached per item name).
@@ -536,10 +536,29 @@ function enterHome() {
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => sleep({ name: 'home' }, 0) }, '\ud83d\udecf Sleep until morning (free)'), h('button', { class: 'btn alt', onclick: () => { closeModal(); phone.open(); } }, '\ud83d\udcf1 Phone'), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
   });
 }
+// Basement pub behind the Wren Building: stairs down to a dim bar with beer, cider and mild "brick" weed.
+const CELLAR = { id: 'basement', name: "The Wren's Cellar", type: 'pub', owner: 'public' };
+const CELLAR_MENU = [
+  ['Draft Pale Ale', 7, 'beer', 'Cold, hoppy, poured slow from a wooden tap.'],
+  ['Dry Hard Cider', 7, 'cider', 'Crisp apples from east of the mountains.'],
+  ['Brick Weed', 9, 'weed_brick', 'Compressed, mellow and a bit scratchy. A gentler, shorter lift than dispensary stuff, with no neon lights.'],
+];
+function enterCellar() {
+  sfx('door');
+  const hour = Math.floor(state.minutes / 60) % 24;
+  if (hour >= 2 && hour < 16) { closeModal(); return notify('The cellar door is bolted. Open 16:00\u201302:00.', { sound: false }); }
+  const show = (it) => openModal((m) => m.append(h('h3', {}, it[0]), itemImg(it[0], it[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, it[3]),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (it[2] === 'weed_brick') { buyItem(CELLAR, it); } else if (!consume(CELLAR, it, it[1])) return; enterCellar(); } }, `\ud83d\udc4d Buy ${money(it[1])}`), h('button', { class: 'btn warn', onclick: enterCellar }, '\u26d4 Back'))));
+  openModal((c) => c.append(h('h3', {}, "\ud83c\udf7a The Wren's Cellar"), h('p', { class: 'small' }, 'Down a steep stairwell: brick walls, string lights, a jukebox with one good song. The bartender nods without looking up.'),
+    h('div', { class: 'menu-items' }, ...CELLAR_MENU.map((it) => h('div', { class: 'menu-item', onclick: () => show(it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(it[1]))))),
+    h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+}
+
 function enterVenue(d) {
   if (d.special === 'dojo') return enterDojo();
   if (d.special === 'crystal') return enterCrystalShop();
   if (d.special === 'home') return enterHome();
+  if (d.special === 'cellar') return enterCellar();
   const def = defOf(d.bizId) || {};
   // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
   const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);
@@ -580,6 +599,7 @@ function buyItem(b, it) {
   const rec = log.find((p) => p.name === it[0]);
   if (rec) rec.count++; else { log.push({ name: it[0], kind: kindFor(it[0], it[2]) || null, where: b.name, day: state.day, count: 1 }); notify(`🛍 New for your Purchases: ${it[0]}`, { sound: false }); }
   if (it[2] === 'weed_good') { state.buzzed = { type: 'good', until: state.minutes + 120 }; notify('Colors look… a little weird.', { sound: false }); }
+  else if (it[2] === 'weed_brick') { state.buzzed = { type: 'mild', until: state.minutes + 40 }; notify('A slow, mellow warmth. Everything is a little softer.', { sound: false }); }
   else if (!state.owns[it[2]]) notify(`Bought ${it[0]}.`, { sound: false });
 }
 // With AI on, a shop may stock one new invented product per day (up to 6 per shop), kept in the save.
@@ -621,8 +641,8 @@ function frame() {
   if (!paused) { tick(dt); } else input.edge = {};
   const mood = state.buzzed && state.minutes < state.buzzed.until ? state.buzzed.type : null;
   if (!mood) state.buzzed = null;
-  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : '';
-  if (mood && mood !== 'good') { shake = Math.sin(t * 2) * 0.6; }
+  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : mood === 'mild' ? 'hue-rotate(15deg) saturate(1.2)' : '';
+  if (mood && mood !== 'good' && mood !== 'mild') { shake = Math.sin(t * 2) * 0.6; }
   renderer.render(scene, camera);
 }
 
@@ -671,7 +691,7 @@ function collide(x, z, y, r) {
 
 function movePlayer(dt) {
   const mv = readMove();
-  const wob = state.buzzed && state.minutes < state.buzzed.until && state.buzzed.type !== 'good';
+  const wob = state.buzzed && state.minutes < state.buzzed.until && state.buzzed.type !== 'good' && state.buzzed.type !== 'mild';
   if (player.eating > 0) player.eating -= dt;
   if (player.ride === 'tram') {
     const p = tramSys.tram.pos; player.x = p.x; player.z = p.z; player.y = 0.9; player.speed = 0;

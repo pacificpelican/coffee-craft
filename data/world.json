@@ -66,7 +66,7 @@
     {"id":"spicywolf","name":"Spicy Wolf Ramen","type":"restaurant","style":"ramen","block":[0,2],"slot":"N1","color":"#b8632f","quality":71,"base":32,
       "menu":[["Wolf Pack Spicy Ramen",14,"ramen","Level 1 to 5 heat. Orange, not red."],["Cold Sesame Noodles",11,"ramen","Chilled, nutty."]]},
     {"id":"derelict2","name":"Vacant - Former Laundromat","type":"derelict","block":[0,2],"slot":"S0","color":"#5d5a50","floors":2},
-    {"id":"apts5","name":"Wren Building","type":"apartments","home":true,"block":[0,2],"slot":"S1","color":"#6c7d72","floors":4},
+    {"id":"apts5","name":"Wren Building","type":"apartments","home":true,"block":[0,2],"slot":"S1","color":"#6c7d72","floors":4,"backDoor":{"id":"basement","name":"The Wren's Cellar","special":"cellar","x":-6.5,"sub":"basement pub · beer · cider","signBg":"#4a2a14","doorColor":"#3a2616","lantern":"#ffb347","stairs":true}},
 
     {"id":"park","name":"Baloo's Park","type":"park","block":[1,2],"slot":"ALL","public":true},
 

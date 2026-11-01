@@ -179,6 +179,15 @@ export function buildWorld(scene, defList) {
       bs.position.set(bd.x, 4.7, bz0 - 0.1); bs.rotation.y = Math.PI; g.add(bs);
       const lan = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshBasicMaterial({ color: bd.lantern || '#e8832b' }));
       lan.position.set(bd.x - 2, 2.9, bz0 - 0.6); lan.scale.y = 1.3; g.add(lan);
+      if (bd.stairs) {
+        // a stairwell that seems to drop to a basement bar: dark pit, descending steps, iron rails
+        g.add(box(4.4, 0.08, 3.4, '#0e1013', bd.x, 0.07, bz0 - 1.9));
+        for (let k = 0; k < 4; k++) g.add(box(3.6, 0.06, 0.6, shade('#5a5a56', 1 - k * 0.2), bd.x, 0.14 - k * 0.0, bz0 - 0.5 - k * 0.7 - 0.2));
+        for (const sx of [-2.3, 2.3]) { g.add(box(0.12, 1, 3.4, '#2b2f2a', bd.x + sx, 0.6, bz0 - 1.9)); }
+        g.add(box(4.7, 0.1, 0.1, '#2b2f2a', bd.x, 1.1, bz0 - 3.6));
+        const glow = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.4), new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+        glow.position.set(bd.x, 1.4, bz0 - 0.2); glow.rotation.y = Math.PI; g.add(glow);
+      }
     }
     add(g);
     g.updateMatrixWorld(true);
