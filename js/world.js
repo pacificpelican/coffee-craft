@@ -250,7 +250,69 @@ export function buildWorld(scene, defList) {
   buildBillboards();
   buildSkyline();
   buildCanal();
+  buildEastEdge();
   buildScooters();
+
+  // East edge: a chain-link fence the whole way; north of CZ it overlooks a huge cliff, south of it the ground is level, rocky scrubland.
+  function buildEastEdge() {
+    const EX = 131, CZ = -12, DEPTH = 80;
+    const rockTex = (base, n, rep) => {
+      const t = canvasTex(128, 128, (g, w, h) => {
+        g.fillStyle = base; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < n; i++) { const v = rnd() < 0.5 ? '255,255,255' : '0,0,0'; g.fillStyle = `rgba(${v},${0.05 + rnd() * 0.12})`; g.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 14, 2 + rnd() * 5); }
+      }, THREE, true);
+      t.repeat.set(rep[0], rep[1]); return t;
+    };
+    const dbl = (map, color) => new THREE.MeshLambertMaterial({ map, color, side: THREE.DoubleSide });
+    // trim the asphalt so it stops at the edge
+    ground.geometry.dispose();
+    ground.geometry = new THREE.PlaneGeometry(210 + EX, 420);
+    ground.position.x = (EX - 210) / 2;
+    asphalt.repeat.set(60 * (210 + EX) / 420, 60);
+
+    // south: even rocky scrub beyond the fence
+    const scrub = new THREE.Mesh(new THREE.PlaneGeometry(120, 150 - CZ + 60), dbl(rockTex('#6c685c', 140, [14, 18]), '#ffffff'));
+    scrub.rotation.x = -Math.PI / 2; scrub.position.set(EX + 60, -0.02, (CZ + 210) / 2); add(scrub);
+    for (let i = 0; i < 70; i++) {
+      const s = rand(0.5, 2.6), x = EX + 2 + rnd() * 90, z = CZ + 4 + rnd() * (200 - CZ);
+      const r = box(s * rand(1, 1.8), s * rand(0.5, 1), s * rand(1, 1.8), pick(['#77746a', '#8a867a', '#5f5c54']), x, s * 0.25, z);
+      r.rotation.y = rnd() * 3; add(r);
+    }
+    for (let i = 0; i < 14; i++) { const s = rand(0.8, 1.6); const b = new THREE.Mesh(new THREE.ConeGeometry(s, s * 1.4, 5), mat('#4d5e3a')); b.position.set(EX + 4 + rnd() * 60, s * 0.5, CZ + 6 + rnd() * (180 - CZ)); add(b); }
+
+    // north: sheer cliff face, ledges and a misty valley far below
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(CZ + 190, DEPTH), dbl(rockTex('#4a4742', 240, [10, 5]), '#ffffff'));
+    face.rotation.y = Math.PI / 2; face.position.set(EX, -DEPTH / 2, (-190 + CZ) / 2); add(face);
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(100, DEPTH), dbl(rockTex('#4a4742', 240, [6, 5]), '#ffffff'));
+    side.position.set(EX + 50, -DEPTH / 2, CZ); add(side);
+    for (let i = 0; i < 26; i++) {
+      const y = -4 - rnd() * (DEPTH - 8), w = rand(1, 3.5);
+      add(box(w, rand(1.5, 4), rand(6, 22), pick(['#59564f', '#4a4742', '#6a665d']), EX + w / 2 - 0.2, y, -170 + rnd() * (CZ + 165)));
+    }
+    add(box(2.4, 0.8, CZ + 185, '#6a665d', EX - 0.6, -0.4, (-185 + CZ) / 2 - 2)); // eroded lip
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(320, 260), new THREE.MeshLambertMaterial({ color: '#2f4636' }));
+    floor.rotation.x = -Math.PI / 2; floor.position.set(EX + 150, -DEPTH, CZ - 130); add(floor);
+    const far = new THREE.Mesh(new THREE.PlaneGeometry(260, 150), dbl(rockTex('#55524b', 200, [14, 6]), '#ffffff'));
+    far.rotation.y = -Math.PI / 2; far.position.set(EX + 150, -DEPTH + 55, CZ - 130); add(far);
+    for (let i = 0; i < 90; i++) {
+      const s = rand(2, 5); const t = new THREE.Mesh(new THREE.ConeGeometry(s * 0.7, s * 3, 6), mat(pick(['#2c4a34', '#25402e', '#35553b'])));
+      t.position.set(EX + 8 + rnd() * 130, -DEPTH + s * 1.5, CZ - 240 + rnd() * 225); add(t);
+    }
+    const mist = new THREE.Mesh(new THREE.PlaneGeometry(320, 260), new THREE.MeshBasicMaterial({ color: '#b9c9d2', transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }));
+    mist.rotation.x = -Math.PI / 2; mist.position.set(EX + 150, -34, CZ - 130); add(mist);
+
+    // fence the whole way, with warning signs along the cliff
+    const FX = EX - 1.4, z0 = -150, z1 = 132, len = z1 - z0;
+    const fm = mat('#9aa3a6', { transparent: true, opacity: 0.35 });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.2, len), fm); mesh.position.set(FX, 1.3, (z0 + z1) / 2); add(mesh);
+    add(box(0.12, 0.12, len, '#4a4f50', FX, 2.4, (z0 + z1) / 2)); add(box(0.1, 0.1, len, '#4a4f50', FX, 0.25, (z0 + z1) / 2));
+    for (let z = z0; z <= z1; z += 4) add(box(0.16, 2.6, 0.16, '#3a3f40', FX, 1.3, z));
+    for (let z = z0 + 10; z < CZ; z += 24) {
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshBasicMaterial({ map: signTexture(THREE, 'DANGER', '#b3261e', '#fff6dc', 'steep cliff · keep out'), side: THREE.DoubleSide }));
+      s.position.set(FX - 0.12, 1.6, z); s.rotation.y = Math.PI / 2; add(s);
+    }
+    solid(FX - 0.3, EX + 40, z0 - 20, z1 + 20, 99);
+  }
 
   function buildCanal() {
     const x0 = -134, x1 = -176, zc = -9, len = 330;
