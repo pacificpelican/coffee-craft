@@ -26,7 +26,9 @@ Open <http://localhost:8000>. Without PHP (any static server) the game still pla
 | 💬 | `/` | Talk (NPCs, pigeons, raccoons); scooter speed boost |
 | 👍 | `.` | Interact / yes / accelerate scooter |
 | ⛔ | `,` | No / avoid / brake scooter |
-| ▶️ | `'` | Friendly greeting, sit/stand, enter doors, board vehicles, street deals, power-slide |
+| ▶️ | `'` | Friendly greeting, sit/stand, enter doors, board vehicles, street deals, power-slide; in Car Stealer, steal/exit a car |
+
+In the **Car Stealer** phone mini-game, the arrows/pad steer a stolen car and 💬 honks.
 
 The ⏸ button opens the pause menu (Settings, screenshot, mute); 📱 opens the phone.
 
@@ -68,10 +70,12 @@ on the server. Serve over HTTPS.
 - `index.html`, `css/style.css` — UI shell, intro modal, HUD, controller.
 - `js/main.js` — boot, game loop, input, interactions, dialogue, camera.
 - `js/world.js`, `traffic.js`, `npcs.js`, `actors.js`, `art.js` — city, vehicles/streetcar/weather, people/animals, procedural art.
-- `js/economy.js` — businesses, NPC demand, banks, bankruptcy, loans.
-- `js/phone.js` — smartphone apps and Settings tabs.
+- `js/rideshare.js` — Robot Driver cars (player trips and NPC rides).
+- `js/stock.js` — store inventories.
+- `js/economy.js` — businesses, NPC demand, banks, bankruptcy, loans, buying and renovating liquidated properties.
+- `js/phone.js` — smartphone apps (including Car Stealer) and Settings tabs.
 - `js/minigames.js` — pickleball, roaster, espresso, fight.
-- `js/audio.js` — generated sound and music.
+- `js/audio.js` — generated sound and music (radio channels incl. jazz, which Car Stealer forces on).
 - `api.php`, `config.php` — backend.
 - `data/world.json` — content (businesses, menus, NPCs). `data/mods/index.json` lists optional mod files merged over it.
 
@@ -84,3 +88,5 @@ Content is data-driven: add a JSON file to `data/mods/` and list it in `data/mod
 Venue interiors are modal screens, not walkable 3D rooms.
 The fight mini-game is only played as sparring at the Cedar Crane Dojo (the alley door behind Eastgate Apartments, open 6:00–23:00, $40 per bout, belts rise with wins); random street fights don't exist.
 Police response and troublemaker NPCs are minimal.
+Car Stealer is a no-consequences parallel universe: it never touches your save, and stolen cars simply stay where you leave them.
+The game is intended for players 18 and over (see Settings → Terms).

@@ -11,6 +11,10 @@ canvas#game { position:fixed; inset:0; width:100%; height:100%; display:block; i
 #hud-top { position:absolute; top:calc(8px + env(safe-area-inset-top)); right:10px; display:flex; gap:8px; }
 #hud-top button { width:44px; height:44px; font-size:20px; border-radius:12px; border:2px solid var(--ink); background:var(--cream); box-shadow:0 3px 0 var(--ink); }
 #hud-top button:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
+#btn-cs-exit { display:none; }
+body.cs-mode #btn-phone { display:none; }
+body.cs-mode #hud-top #btn-cs-exit { display:block; width:auto; padding:0 12px; font-size:14px; font-weight:bold; color:var(--ink); -webkit-text-fill-color:var(--ink); background:#f0a35a; }
+body.cs-mode canvas#game { box-shadow:inset 0 0 0 6px #23291f; }
 #prompt { position:absolute; left:50%; bottom:150px; transform:translateX(-50%); background:rgba(35,41,31,.85); color:var(--cream); padding:6px 14px; border-radius:16px; font-size:14px; pointer-events:none; display:none; max-width:80vw; text-align:center; }
 #notifs { position:absolute; top:calc(8px + env(safe-area-inset-top)); left:10px; display:flex; flex-direction:column; gap:6px; max-width:min(340px,60vw); }
 .notif { background:var(--cream); border:2px solid var(--ink); border-left:8px solid var(--yellow); border-radius:10px; padding:6px 10px; font-size:13px; box-shadow:0 3px 0 rgba(0,0,0,.35); cursor:pointer; animation:pop .25s; }
@@ -36,9 +40,9 @@ canvas#game { position:fixed; inset:0; width:100%; height:100%; display:block; i
 .controls-info { background:#e0d7b8; border-radius:10px; padding:8px; font-size:13px; margin:10px 0; }
 kbd { background:#fff; border:1px solid #999; border-radius:4px; padding:0 5px; font-size:12px; }
 .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:8px 0; }
-button.big, button.btn { font:inherit; font-weight:bold; padding:10px 22px; border-radius:12px; border:2px solid var(--ink); background:var(--yellow); box-shadow:0 4px 0 var(--ink); cursor:pointer; }
-button.big.alt, button.btn.alt { background:var(--moss); color:#fff; }
-button.btn { padding:6px 12px; font-size:13px; } button.btn.warn { background:var(--orange); }
+button.big, button.btn { font:inherit; font-weight:bold; padding:10px 22px; border-radius:12px; border:2px solid var(--ink); background:var(--yellow); color:var(--ink); -webkit-text-fill-color:var(--ink); box-shadow:0 4px 0 var(--ink); cursor:pointer; }
+button.big.alt, button.btn.alt { background:#587342; color:#fff; -webkit-text-fill-color:#fff; }
+button.btn { padding:6px 12px; font-size:13px; } button.btn.warn { background:#f0a35a; color:var(--ink); -webkit-text-fill-color:var(--ink); }
 button:disabled { opacity:.5; }
 .credit, .small { font-size:12px; color:#555; } a { color:var(--blue); }
 /* dialogue & venue */

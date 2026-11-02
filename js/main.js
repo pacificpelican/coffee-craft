@@ -5,10 +5,10 @@ import { server, initServer, account, aiText, aiJson } from './api.js';
 import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
 import { stockFor, crystalStock } from './stock.js';
 import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS, kindFor, sanitizeSVG } from './art.js';
-import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel } from './audio.js';
+import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel, lockChannel, unlockChannel } from './audio.js';
 import * as eco from './economy.js';
 import { buildWorld, groundHeight, INT, BOUNDS } from './world.js';
-import { makePlayerModel, animateHuman, makeScooter } from './actors.js';
+import { makePlayerModel, makeDudeModel, animateHuman, makeScooter } from './actors.js';
 import { buildTraffic, buildStreetcar, buildEnvironment } from './traffic.js';
 import { buildNpcs, nearestOf } from './npcs.js';
 import { buildRideshare } from './rideshare.js';
@@ -22,6 +22,7 @@ let paused = true, started = false, modalOpen = false, hud;
 const input = { x: 0, z: 0, edge: {} };
 const keys = new Set();
 let scooters = [];
+let cs = null; // Car Stealer: a parallel-universe mode that never touches the real save
 let shake = 0;
 
 $('#intro-logo').innerHTML = LOGO_SVG;
@@ -63,6 +64,7 @@ const G = {
   autoPending: () => { for (const d of [...state.bank.decisions]) eco.applyDecision(state, d, eco.heuristic(state, d), 'player', true); },
   npcReply: async (name, text) => { const n = { persona: { name, occupation: 'friend', quirk: '', mood: 'friendly' } }; const text2 = await npcReply(n, [{ role: 'user', content: text }], 'chat'); G.lastAi = !!n.aiReply; return text2; },
   printSheet,
+  stealer: { active: () => !!cs, start: () => startStealer() },
 };
 
 // ----------------------------------------------------------- modal helpers
@@ -107,6 +109,7 @@ async function boot() {
     },
   });
   player = { x: world.spawn.x, z: world.spawn.z, y: 0.2, heading: Math.PI, speed: 0, ride: null, sitting: null, eating: 0, scooter: null };
+  traffic.setExtraSolids(() => rideshare.meshes());
   playerMesh = makePlayerModel(); scene.add(playerMesh);
   npcSys = buildNpcs(scene, world, 44);
   // scooters
@@ -143,6 +146,7 @@ async function aiNews() {
 
 // ----------------------------------------------------------- save / load
 function saveLocal() {
+  if (cs) return;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, player: { x: player.x, z: player.z } })); } catch { /* quota */ }
   if (server.user) account.saveGame(G.snapshot()).catch(() => { /* offline: local save still exists */ });
 }
@@ -238,9 +242,11 @@ function togglePause() {
 
 function wireUI() {
   $('#play').onclick = () => start(false);
+  $('#intro-terms').onclick = (e) => { e.preventDefault(); phone.open('settings', { tab: 'Terms' }); };
   $('#continue').onclick = () => start(true);
   $('#btn-pause').onclick = togglePause; $('#btn-mute').onclick = toggleMute;
   $('#btn-phone').onclick = () => (phone.isOpen() ? phone.close() : phone.open());
+  $('#btn-cs-exit').onclick = exitStealer;
   $('#p-resume').onclick = togglePause;
   $('#p-settings').onclick = () => { togglePause(); phone.open('settings'); };
   $('#p-shot').onclick = takeShot;
@@ -284,6 +290,11 @@ function takeShot() {
 function nearbyTargets() {
   const out = [];
   if (player.inside) return out;
+  if (cs) {
+    if (player.drive) return out;
+    for (const m of traffic.parked) { const dd = Math.hypot(m.position.x - player.x, m.position.z - player.z); if (dd < 3.6) out.push({ kind: 'steal', m, dist: dd, label: 'Steal this car' }); }
+    return out.sort((a, b) => a.dist - b.dist);
+  }
   for (const d of world.doors) { const dd = Math.hypot(d.x - player.x, d.z - player.z); if (dd < (d.r || 2.6) + 0.6) out.push({ kind: 'door', d, dist: dd, label: 'Enter ' + d.label }); }
   for (const s of scooters) { if (s.riding) continue; const dd = Math.hypot(s.x - player.x, s.z - player.z); if (dd < 2.4) out.push({ kind: 'scooter', s, dist: dd, label: 'Ride scooter' }); }
   if (rideshare.phase() === 'waiting') { const c = rideshare.carPos(), dd = Math.hypot(c.x - player.x, c.z - player.z); if (dd < 8) out.push({ kind: 'robo', dist: dd, label: 'Board Robot Driver' }); }
@@ -304,6 +315,7 @@ function handleActions() {
   if (player.ride === 'tram') { if (e.friendly || e.yes) alightTram(); return; }
   if (player.ride === 'bus') { if (e.friendly || e.yes) { player.bus.stopReq = true; notify('Stop requested — the bus will pull up.', { sound: false, ms: 2000 }); sfx('bell'); } return; }
   if (player.ride === 'robo') { if (e.friendly || e.yes) notify(pick(['Robot Driver: “I will stop at your destination. I have never missed one.”', 'Robot Driver: “Please remain seated. I am vibing.”', 'Robot Driver: “Did you know? I do not know either.”']), { sound: false, ms: 3500 }); return; }
+  if (player.drive) { if (e.friendly || e.yes) leaveCar(); else if (e.talk || e.no) sfx('horn'); return; }
   if (player.scooter) return scooterActions(e);
   const t = nearbyTargets()[0];
   if (e.friendly) {
@@ -314,13 +326,14 @@ function handleActions() {
   }
   if (e.yes) { if (t && ['court', 'poster', 'bench'].includes(t.kind)) return activate(t); const n = npcNear(); if (n) return startDialogue(n); if (t) return activate(t); }
   if (e.talk) { const n = npcNear(4); if (n) startDialogue(n); else notify('No one close enough to talk to.', { sound: false, ms: 2000 }); }
-  if (e.no) { const n = npcNear(10); if (n && !n.isAnimal) { notify(`You: "Watch it!" ${n.persona.name} looks mildly offended.`, { sound: false }); state.rep = clamp(state.rep - 0.4, 0, 100); n.rel = (n.rel || 0) - 1; } else { notify('You mutter at the weather.', { sound: false, ms: 2000 }); } sfx('squawk'); }
+  if (e.no) { const n = npcNear(10); if (n && !n.isAnimal) { notify(`You: "Watch it!" ${n.persona.name} looks mildly offended.`, { sound: false }); if (!cs) state.rep = clamp(state.rep - 0.4, 0, 100); n.rel = (n.rel || 0) - 1; } else { notify('You mutter at the weather.', { sound: false, ms: 2000 }); } sfx('squawk'); }
 }
 function greet(n) {
   const lines = ['"Hi there!"', '"Beautiful day. Well — dry-ish."', '"Love this neighborhood."'];
   notify(`You: ${pick(lines)} — ${n.persona.name} waves back.`, { sound: false }); n.rel = (n.rel || 0) + 1;
 }
 function activate(t) {
+  if (t.kind === 'steal') return stealCar(t.m);
   if (t.kind === 'door') return enterVenue(t.d);
   if (t.kind === 'scooter') { player.scooter = t.s; t.s.riding = true; player.heading = t.s.h; sfx('scooterOn'); notify('Scooter: 👍 go · ⛔ brake · 💬 boost · ▶️ slide / get off', { sound: false, ms: 5000 }); return; }
   if (t.kind === 'bench') { if (player.sitting) standUp(); else { player.sitting = t.it; player.x = t.it.x; player.z = t.it.z; player.y = t.it.y || groundHeight(world, t.it.x, t.it.z); player.heading = t.it.rot ?? 0; } return; }
@@ -329,6 +342,54 @@ function activate(t) {
   if (t.kind === 'tramstop') return boardTram();
   if (t.kind === 'robo') { if (rideshare.board()) { player.ride = 'robo'; playerMesh.visible = false; sfx('door'); notify(`Buckled in. Heading to ${rideshare.status().dest.label}. Fare ${money(rideshare.status().fare)}.`, { sound: false, ms: 5000 }); } return; }
   if (t.kind === 'bus') { player.ride = 'bus'; player.bus = t.a; t.a.rider = true; t.a.stopReq = false; playerMesh.visible = false; sfx('door'); notify('On the bus! ▶️ to request a stop and get off.', { sound: false, ms: 5000 }); }
+}
+// ----------------------------------------------------------- Car Stealer (phone mini-game, parallel universe)
+function startStealer() {
+  if (cs || !started) return;
+  if (player.ride || player.scooter || player.inside || player.sitting) return notify('Finish what you are doing first.', { sound: false });
+  const mesh = makeDudeModel();
+  cs = { saved: { x: player.x, y: player.y, z: player.z, heading: player.heading }, lady: playerMesh, mesh, stolen: 0 };
+  scene.remove(playerMesh); playerMesh = mesh; scene.add(mesh);
+  player.x = world.spawn.x; player.z = world.spawn.z; player.y = groundHeight(world, player.x, player.z); player.heading = Math.PI; player.speed = 0;
+  camera.position.set(player.x, player.y + 17, player.z + 17);
+  document.body.classList.add('cs-mode');
+  lockChannel('jazz');
+  notify('🚘 Car Stealer — a parallel universe. Nothing here counts. Walk up to a parked car and press ▶️.', { sound: false, ms: 9000 });
+}
+function exitStealer() {
+  if (!cs) return;
+  if (player.drive) { traffic.repark(player.drive.mesh); player.drive = null; }
+  scene.remove(playerMesh); playerMesh = cs.lady; scene.add(playerMesh); playerMesh.visible = true;
+  Object.assign(player, cs.saved, { speed: 0, drive: null });
+  const n = cs.stolen; cs = null;
+  document.body.classList.remove('cs-mode');
+  unlockChannel();
+  camera.position.set(player.x, player.y + 17, player.z + 17);
+  notify(`Back to your own universe. (${n} car${n === 1 ? '' : 's'} borrowed next door.)`, { sound: false, ms: 5000 });
+}
+function stealCar(m) {
+  traffic.unpark(m);
+  player.drive = { mesh: m, v: 0 }; player.heading = m.rotation.y; playerMesh.visible = false;
+  cs.stolen++; sfx('door');
+  notify(pick(['Click. Click. The door gives way. ▶️ to get out · arrows to drive · 💬 horn', 'Slim-jim, one hot-wire, zero regrets. ▶️ to get out · 💬 horn', 'Nobody saw that. Probably. ▶️ to get out · 💬 horn']), { sound: false, ms: 5000 });
+}
+function leaveCar() {
+  const d = player.drive;
+  if (Math.abs(d.v) > 2.5) return notify('Slow down before you bail out!', { sound: false, ms: 2000 });
+  const h = d.mesh.rotation.y, [nx, nz] = collide(d.mesh.position.x + Math.cos(h) * 2.1, d.mesh.position.z - Math.sin(h) * 2.1, player.y, 0.45);
+  traffic.repark(d.mesh); player.drive = null; player.x = nx; player.z = nz; player.y = groundHeight(world, nx, nz); playerMesh.visible = true; sfx('door');
+}
+function driveCar(dt, mv) {
+  const d = player.drive, thr = -mv.z;
+  d.v += (thr > 0 ? 15 : 20) * thr * dt;
+  d.v -= d.v * 0.45 * dt + Math.sign(d.v) * Math.min(Math.abs(d.v), 2.2 * dt);
+  d.v = clamp(d.v, -6, 19);
+  player.heading -= clamp(mv.x, -1, 1) * dt * 1.7 * clamp(d.v / 5, -1, 1);
+  const dx = Math.sin(player.heading) * d.v * dt, dz = Math.cos(player.heading) * d.v * dt;
+  let [nx, nz] = collide(player.x + dx, player.z + dz, 0.2, 1.3);
+  if (Math.hypot(nx - player.x - dx, nz - player.z - dz) > 0.05) d.v *= 0.4;
+  player.x = clamp(nx, BOUNDS.x0, BOUNDS.x1); player.z = clamp(nz, BOUNDS.z0, BOUNDS.z1); player.y = groundHeight(world, player.x, player.z); player.speed = 0;
+  d.mesh.position.set(player.x, player.y, player.z); d.mesh.rotation.y = player.heading;
 }
 function alightBus() {
   const a = player.bus, c = a.axis === 'z' ? [a.c, a.mesh.position.z] : [a.mesh.position.x, a.c];
@@ -364,9 +425,19 @@ const OFFLINE = {
   dreamy: ['I was just watching the clouds drift over the old tower.', 'Do you ever read by the window with the rain on it? That is the life.'],
   chatty: ['Oh, did you hear about the whale mural? Somebody touched up the tail!', 'My cousin says the streetcar is the best way to see the whole neighborhood.'],
 };
+const OFFLINE_SUS = [
+  'Why are you looking at me like that?', 'I did not see anything. Did YOU see anything?', 'You have a very car-shaped look about you.', 'Stay away from my car. Any car. Everyone\u2019s car.',
+  'I am watching you. I am literally watching you right now.', 'Nobody asked you. Nobody asks you anything. Keep walking.', 'Have we met? We haven\u2019t. Why do you know my name?', 'Those are some… shifty keys you are not holding.',
+  'Hmm. Hands where I can see them. Also, hi.', 'I know what a person who steals cars looks like. You look exactly like that.',
+];
 async function npcReply(n, msgs, ctx = 'street') {
   const p = n.persona;
   if (n.isAnimal) return n.kind === 'raccoon' ? '*chitters, clutching a pizza crust*' : n.kind === 'deer' ? '*flicks an ear, watching you with huge dark eyes*' : n.kind === 'dog' ? '*wags enthusiastically*' : n.kind === 'pelican' ? '*regards you with ancient pelican dignity, bill pouch sagging*' : '*coos and eyes your pockets*';
+  if (cs) {
+    const ai = await aiText(`You are ${p.name}, ${p.occupation}, in a darkly comic parallel-universe version of a rainy city neighborhood where the player is a shifty guy who steals parked cars (no real consequences). You are VERY suspicious of him: wary, paranoid, accusatory but funny, never violent or threatening. Reply in 1-2 short sentences, in character, no stage directions.`, msgs.slice(-8));
+    n.aiReply = !!ai;
+    return ai ? ai.replace(/\s+/g, ' ').slice(0, 300) : pick(OFFLINE_SUS);
+  }
   const sys = `You are ${p.name}, ${p.occupation}, in a game set in a rainy, gritty Pacific Northwest international district. Personality: ${p.quirk || p.bio || 'friendly'}. Mood: ${p.mood}. ${n.persona.bio ? 'Bio: ' + n.persona.bio : ''} Weather: ${state.weather}. Reply in 1-2 short sentences, in character, no stage directions. The player runs coffee shops.`;
   const ai = await aiText(sys, msgs.slice(-8));
   n.aiReply = !!ai;
@@ -389,13 +460,13 @@ function startDialogue(n) {
     const send = async (text) => {
       if (!text) return; inp.value = ''; add('You', text); n.rel = (n.rel || 0) + 1;
       const r = await npcReply(n, log.map((l) => ({ role: l.who === 'You' ? 'user' : 'assistant', content: l.text })), 'street'); add(p.name, r, n.aiReply);
-      if (!n.isAnimal && n.kind !== 'dealer' && n.rel >= 3 && !n.offered && !state.contacts.includes(p.name) && Math.random() < 0.6) { n.offered = true; offerNumbers(card, n, add); }
+      if (!cs && !n.isAnimal && n.kind !== 'dealer' && n.rel >= 3 && !n.offered && !state.contacts.includes(p.name) && Math.random() < 0.6) { n.offered = true; offerNumbers(card, n, add); }
     };
     card.append(h('h3', {}, `${n.isAnimal ? '' : '💬 '}${p.name}`), h('div', { class: 'small' }, `${p.occupation}${p.mood ? ' · ' + p.mood : ''}`), box, inp,
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => send(inp.value) }, 'Say'), h('button', { class: 'btn alt', onclick: () => send('Hi! How is your day?') }, 'Chat'), h('button', { class: 'btn alt', onclick: () => send('Know any good places to eat?') }, 'Ask for tips'),
         h('button', { class: 'btn', title: 'Export PDF', onclick: () => exportPdf(n, log) }, '🖨'), h('button', { class: 'btn warn', onclick: closeModal }, 'Walk away')));
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(inp.value); e.stopPropagation(); });
-    if (n.kind === 'dealer') card.append(dealerMenu());
+    if (n.kind === 'dealer' && !cs) card.append(dealerMenu());
     npcReply(n, [{ role: 'user', content: 'Hello!' }]).then((r) => add(p.name, r, n.aiReply));
   }, () => { n.state = 'walk'; });
   if (!n.isAnimal) { n.state = 'chat'; n.chatT = 999; }
@@ -435,7 +506,8 @@ function dealerMenu() {
     if (rec) rec.count++; else { log.push({ name, kind: 'xtal:shard:#7fd6c8', where: 'Under the highway', day: state.day, count: 1 }); notify(`🛍 New for your Purchases: ${name}`, { sound: false }); }
     notify(pick(['“Genuine. Probably.” It might be glass.', '“Fell off a… geode.” It glows a little. Maybe.', '“Don’t ask where it’s from.” It is warm to the touch.', 'A shard of something. It hums faintly, or that is the highway.']), { sound: false });
   };
-  return h('div', { class: 'bizcard' }, h('b', {}, 'Street deal (▶️)'), h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: buy('booze', 20) }, 'Sketchy booze $20'), h('button', { class: 'btn warn', onclick: buy('street', 15) }, 'Street weed $15'), h('button', { class: 'btn warn', onclick: fragment }, '💎 “Crystal fragment” $12')));
+  const ask = (title, desc, price, go) => () => openModal((c) => c.append(h('h3', {}, title), h('p', {}, desc), h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: () => { if (state.bank.cash < price) return notify('Not enough funds.'); go(); closeModal(); notify(`✅ Purchased: ${title} (${money(price)}).`, { sound: false }); } }, `👍 Buy ${money(price)}`), h('button', { class: 'btn', onclick: closeModal }, '⛔ Back'))));
+  return h('div', { class: 'bizcard' }, h('b', {}, 'Street deal (▶️)'), h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: ask('Sketchy booze', 'A bottle with no label. Probably fine.', 20, buy('booze', 20)) }, 'Sketchy booze $20'), h('button', { class: 'btn warn', onclick: ask('Street weed', 'Mystery greenery in a sandwich bag.', 15, buy('street', 15)) }, 'Street weed $15'), h('button', { class: 'btn warn', onclick: ask('Crystal Fragment', 'A shard of something that may be glass.', 12, fragment) }, '💎 “Crystal fragment” $12')));
 }
 
 // ----------------------------------------------------------- venues
@@ -474,6 +546,17 @@ function foodModal(b, item) {
   const price = G.price(b, item[1]);
   openModal((c) => c.append(h('h3', {}, item[0]), itemImg(item[0], item[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, item[3] || ''),
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (consume(b, item, price)) closeModal(); } }, `👍 Buy ${money(price)}`), h('button', { class: 'btn warn', onclick: () => enterVenueById(b.id) }, '⛔ Back'))));
+}
+function vacantModal(b) {
+  const price = eco.vacantPrice(b), types = eco.reopenTypes(state), icons = { coffee: '☕ Café', restaurant: '🍜 Restaurant', donut: '🍩 Donut shop' };
+  let type = types[0];
+  openModal((c) => {
+    const sel = h('select', { onchange: (e) => { type = e.target.value; } }, ...types.map((t) => h('option', { value: t }, icons[t])));
+    c.append(h('h3', {}, `${b.name} — shuttered`), h('p', {}, 'The windows are papered over and the door is chained. A “For Sale” sign hangs crooked.'),
+      h('p', { class: 'small' }, `Asking price ${money(price)}. Opening needs at least ${eco.RENOVATION_PROJECTS} major renovation projects, which cost ${eco.RENOVATION_MARKUP}× the usual price.`),
+      h('div', { class: 'kv' }, h('span', {}, 'Reopen as'), sel),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (!eco.buyVacant(state, b, type)) return notify('Not enough funds.'); sfx('coin'); closeModal(); notify(`🏚 You bought the property. Renovate it from Settings → Business.`); } }, `👍 Buy property ${money(price)}`), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
+  });
 }
 function enterVenueById(id) { const d = world.doors.find((x) => x.bizId === id); if (d) enterVenue(d); }
 
@@ -641,6 +724,8 @@ function enterVenue(d) {
   const hour = Math.floor(state.minutes / 60) % 24;
   const open = d.bizId === 'station' || def.public ? true : eco.hoursOpen(b, hour);
   sfx('door');
+  if (b.state === 'vacant' && d.bizId !== 'station') return vacantModal(b);
+  if (b.state === 'renovating' && b.owner === 'player') return openModal((c) => c.append(h('h3', {}, `${b.name} — under renovation`), h('p', {}, `Dust sheets and ladders. Finish ${eco.RENOVATION_PROJECTS} major projects to open the doors (${b.enhancements.length}/${eco.RENOVATION_PROJECTS} done).`), h('div', { class: 'row' }, h('button', { class: 'btn alt', onclick: () => { closeModal(); phone.open('settings', { tab: 'Business' }); } }, 'Renovation projects'), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
   if (b.state !== 'open' && d.bizId !== 'station') return notify(`${b.name} is ${b.state}.`, { sound: false });
   if (!open && b.type !== 'hotel') return notify(`${b.name} is closed. Hours ${b.hours[0]}:00–${b.hours[1]}:00.`, { sound: false });
   if (b.owner === 'player' && b.type === 'coffee' || b.owner === 'player' && b.type === 'restaurant') { b.totalVisitors++; }
@@ -653,7 +738,7 @@ function enterVenue(d) {
     }
     if (def.items) {
       const list = h('div', { class: 'menu-items' });
-      const draw = () => { list.replaceChildren(...stockFor(def, state.day, (state.extraItems ||= {})[b.id]).map((it) => h('div', { class: 'menu-item', onclick: () => buyItem(b, it) }, itemImg(it[0], it[2]), h('b', {}, it[0]), h('div', {}, money(it[1]))))); };
+      const draw = () => { list.replaceChildren(...stockFor(def, state.day, (state.extraItems ||= {})[b.id]).map((it) => h('div', { class: 'menu-item', onclick: () => storeConfirm(b, it) }, itemImg(it[0], it[2]), h('b', {}, it[0]), h('div', {}, money(it[1]))))); };
       draw(); c.append(list);
       aiNewArrival(b, def, () => { if (list.isConnected) draw(); });
     }
@@ -666,9 +751,18 @@ function enterVenue(d) {
     c.append(h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave')));
   });
 }
+// Store items get the same look-then-confirm step as restaurant dishes, with a clear receipt afterwards.
+function storeConfirm(b, it) {
+  openModal((c) => c.append(h('h3', {}, it[0]), itemImg(it[0], it[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, it[3] || ''),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (state.bank.cash < it[1]) return notify('Not enough funds.'); const owned = it[2] === 'drone' || it[2] === 'camera'; if (owned && state.owns[it[2]]) return notify('You already own that.'); buyItem(b, it); purchased(it[0], it[1], () => enterVenueById(b.id)); }, }, `👍 Buy ${money(it[1])}`), h('button', { class: 'btn warn', onclick: () => enterVenueById(b.id) }, '⛔ Back'))));
+}
+function purchased(name, price, again) {
+  openModal((c) => c.append(h('h3', {}, '✅ Purchased!'), h('p', {}, `${name} — ${money(price)} paid. Balance ${money(state.bank.cash)}.`), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: again }, 'Keep shopping'), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+}
 function buyItem(b, it) {
   if (state.bank.cash < it[1]) return notify('Not enough funds.');
-  if (it[2] === 'drone' || it[2] === 'camera') { if (state.owns[it[2]]) return notify('You already own that.'); state.owns[it[2]] = true; notify(it[2] === 'drone' ? '🚁 Drone owned: new screenshot option!' : '📷 Vintage camera: B&W screenshots!'); }
+  if ((it[2] === 'drone' || it[2] === 'camera') && state.owns[it[2]]) return notify('You already own that.');
+  if (it[2] === 'drone' || it[2] === 'camera') { state.owns[it[2]] = true; notify(it[2] === 'drone' ? '🚁 Drone owned: new screenshot option!' : '📷 Vintage camera: B&W screenshots!'); }
   state.bank.cash -= it[1]; sfx('coin');
   const log = (state.purchases ||= []);
   const rec = log.find((p) => p.name === it[0]);
@@ -716,28 +810,27 @@ function frame() {
   if (!paused) { tick(dt); } else input.edge = {};
   const mood = state.buzzed && state.minutes < state.buzzed.until ? state.buzzed.type : null;
   if (!mood) state.buzzed = null;
-  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : mood === 'mild' ? 'hue-rotate(15deg) saturate(1.2)' : '';
+  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : mood === 'mild' ? 'hue-rotate(15deg) saturate(1.2)' : cs ? 'sepia(.45) saturate(1.4) hue-rotate(-20deg) contrast(1.08)' : '';
   if (mood && mood !== 'good' && mood !== 'mild') { shake = Math.sin(t * 2) * 0.6; }
   renderer.render(scene, camera);
 }
 
 function tick(dt) {
-  state.day = Math.floor(state.minutes / 1440) + 1;
-  eco.advance(state, dt * 2);
+  if (!cs) { state.day = Math.floor(state.minutes / 1440) + 1; eco.advance(state, dt * 2); }
   state.weather = env.weather;
   env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
   if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list); tramSys.update(dt); rideshare.update(dt, traffic.agents);
+  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list); tramSys.update(dt); rideshare.update(dt, traffic.agents, player.ride || player.inside ? null : player, npcSys.list, npcSys, player);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);
   // prompt
   const tg = nearbyTargets()[0]; const n = npcNear(3.2);
-  prompt_(player.ride === 'bus' ? (player.bus.stopReq ? 'Stopping…' : '▶️ request stop') : player.ride === 'robo' ? '🤖 Robot Driver is taking you there' : player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
+  prompt_(cs ? (player.drive ? '🚘 arrows drive · 💬 horn · ▶️ get out' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '') : player.ride === 'bus' ? (player.bus.stopReq ? 'Stopping…' : '▶️ request stop') : player.ride === 'robo' ? '🤖 Robot Driver is taking you there' : player.ride === 'tram' ? '▶️ get off at a stop' : player.scooter ? '' : tg ? `▶️ ${tg.label}` : n ? `💬 Talk to ${n.persona.name}` : '');
   // rain sfx & night traffic hum skipped; random chats
-  msgT -= dt; if (msgT <= 0) { msgT = rand(80, 160); contactMessage(); }
+  if (!cs) { msgT -= dt; if (msgT <= 0) { msgT = rand(80, 160); contactMessage(); }
   saveT += dt; if (saveT > 45) { saveT = 0; saveLocal(); }
-  if (eco.needsBailout(state) && !state.bailNudged) { state.bailNudged = true; notify('🆘 Funds are low. A bailout is available in Settings → Stats.', { kind: 'decision', onclick: () => phone.open('settings', { tab: 'Stats' }) }); }
+  if (eco.needsBailout(state) && !state.bailNudged) { state.bailNudged = true; notify('🆘 Funds are low. A bailout is available in Settings → Stats.', { kind: 'decision', onclick: () => phone.open('settings', { tab: 'Stats' }) }); } }
 }
 
 async function contactMessage() {
@@ -776,6 +869,8 @@ function movePlayer(dt) {
     if (a.stopReq && a.v < 0.5) alightBus();
   } else if (player.ride === 'robo') {
     const c = rideshare.center(); player.x = c.x; player.z = c.z; player.y = 1.0; player.speed = 0; player.heading = c.h;
+  } else if (player.drive) {
+    driveCar(dt, mv);
   } else if (player.scooter) {
     const s = player.scooter;
     s.thr = (s.thr || 0) - dt * 0.6; const acc = s.thr > 0 ? 9 : 0;

@@ -87,7 +87,11 @@ export function buildNpcs(scene, world, count = 44) {
   function pickTarget(e) {
     const cur = nodes[e.node];
     if (e.kind === 'park') { e.parkGoal = { x: world.parkBounds.x0 + rand(2, 48), z: world.parkBounds.z0 + rand(4, 48) }; return; }
-    if (e.kind === 'walker' && Math.random() < 0.28) {
+    if (e.kind === 'walker' && !e.scooter && !e.goScooter && world.scooters.length && Math.random() < 0.05) {
+      const free = world.scooters.filter((s) => !s.riding && !s.claimed && s.mesh && Math.hypot(s.x - e.x, s.z - e.z) < 45);
+      if (free.length) { const s = pick(free); s.claimed = true; e.goScooter = s; e.goDoor = false; e.target = null; return; }
+    }
+    if (e.kind === 'walker' && !e.scooter && Math.random() < 0.28) {
       const blk = cur.block; if (blk) {
         const side = nodes[e.node].z < C[blk[1]] ? 'N' : nodes[e.node].z > C[blk[1]] ? 'S' : null;
         const ds = side && doorsByBlock[`${blk[0]},${blk[1]},${side}`];
@@ -117,10 +121,16 @@ export function buildNpcs(scene, world, count = 44) {
         if (!e.parkGoal) pickTarget(e);
         tx = e.parkGoal.x; tz = e.parkGoal.z;
       } else if (e.goDoor && e.door) { tx = e.door.x; tz = e.door.z; }
+      else if (e.goScooter) { tx = e.goScooter.x; tz = e.goScooter.z; }
       else { if (e.target == null) pickTarget(e); tx = nodes[e.target].x; tz = nodes[e.target].z; }
       const vx = tx - e.x, vz = tz - e.z; const dist = Math.hypot(vx, vz);
-      const spd = e.speed * (nightQuiet ? 0.8 : 1) * (env.rainOn ? 1.25 : 1);
+      const spd = e.speed * (nightQuiet ? 0.8 : 1) * (env.rainOn ? 1.25 : 1) * (e.scooter ? 3 : 1);
       if (dist < 0.8) {
+        if (e.goScooter) {
+          const s = e.goScooter; e.goScooter = null; s.claimed = false;
+          if (!s.riding) { s.riding = true; e.scooter = s; e.rideT = rand(25, 50); relocate(e, e.x, e.z); } else pickTarget(e);
+          continue;
+        }
         if (e.goDoor) { e.goDoor = false; e.state = 'inside'; e.timer = rand(10, 30); e.inside = e.door.bizId; e.mesh.visible = false; if (e.pet) e.pet.mesh.visible = e.pet.leash.visible = false; continue; }
         if (e.kind === 'park') { e.state = 'pause'; e.timer = rand(2, 8); e.parkGoal = null; pickTarget(e); continue; }
         e.prev = e.node; e.node = e.target; e.target = null;
@@ -136,7 +146,7 @@ export function buildNpcs(scene, world, count = 44) {
             let tx2 = -oz / om, tz2 = ox / om; if (tx2 * vx + tz2 * vz < 0) { tx2 = -tx2; tz2 = -tz2; }
             [e.x, e.z] = world.pushVehicles(px + tx2 * spd * dt * 1.2, pz + tz2 * spd * dt * 1.2, 0.4);
             e.blockedT = (e.blockedT || 0) + dt;
-            if (e.blockedT > 2) { e.blockedT = 0; e.target = null; e.goDoor = false; e.parkGoal = null; pickTarget(e); }
+            if (e.blockedT > 2) { e.blockedT = 0; e.target = null; e.goDoor = false; e.parkGoal = null; if (e.goScooter) { e.goScooter.claimed = false; e.goScooter = null; } pickTarget(e); }
           } else e.blockedT = Math.max(0, (e.blockedT || 0) - dt);
         }
         const th = Math.atan2(vx, vz); e.heading += angDiff(e.heading, th) * Math.min(1, dt * 8);
@@ -144,7 +154,11 @@ export function buildNpcs(scene, world, count = 44) {
       if (!e.mesh.visible && e.state !== 'inside') { e.mesh.visible = true; if (e.pet) e.pet.mesh.visible = e.pet.leash.visible = true; }
       e.y = e.kind === 'park' ? groundY(world, e.x, e.z) : 0.2;
       e.mesh.position.set(e.x, e.y, e.z); e.mesh.rotation.y = e.heading;
-      if (!far) animateHuman(e.mesh, spd, t);
+      if (e.scooter) {
+        const s = e.scooter; s.x = e.x; s.z = e.z; s.h = e.heading; s.mesh.position.set(e.x, e.y, e.z); s.mesh.rotation.y = e.heading; e.mesh.position.y = e.y + 0.35;
+        e.rideT -= dt; if (e.rideT <= 0) { s.riding = false; s.v = 0; e.scooter = null; }
+      }
+      if (!far) animateHuman(e.mesh, e.scooter ? 0 : spd, t, !!e.scooter);
       if (e.bubble) { e.bubble.t -= dt; if (e.bubble.t <= 0) e.bubble = null; }
     }
     for (const e of list) if (e.pet) {
@@ -237,7 +251,15 @@ export function buildNpcs(scene, world, count = 44) {
 
   const groundY = (w, x, z) => (x >= w.parkBounds.x0 && x <= w.parkBounds.x1 && z >= w.parkBounds.z0 && z <= w.parkBounds.z0 + 22 ? 3.2 : 0.2);
 
-  return { list, animals, specials, dealers, update, nodes };
+  // Re-seat an NPC on the sidewalk graph at (x, z) after it was carried somewhere (robot taxi, scooter pickup).
+  function relocate(e, x, z) {
+    let best = 0, bd = Infinity;
+    nodes.forEach((n, i) => { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; best = i; } });
+    e.x = x; e.z = z; e.node = best; e.prev = null; e.target = null; e.goDoor = false; e.parkGoal = null;
+    pickTarget(e);
+  }
+
+  return { list, animals, specials, dealers, update, nodes, relocate };
 }
 
 export function nearestOf(entities, x, z, r) {

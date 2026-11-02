@@ -9,6 +9,7 @@ const SPEED = { car: [7, 11], bus: [5, 7], motorcycle: [9, 13], bicycle: [3, 4.5
 
 export function buildTraffic(scene, world) {
   const agents = [];
+  let extraSolids = () => [];
   const spawnList = [['car', 16], ['bus', 3], ['motorcycle', 4], ['bicycle', 4], ['scooter', 3]];
   for (const [type, n] of spawnList) for (let i = 0; i < n; i++) {
     const mesh = makeVehicle(type); scene.add(mesh);
@@ -66,6 +67,10 @@ export function buildTraffic(scene, world) {
         const m = a.mesh; if (Math.abs(m.position.x - x) > 8 || Math.abs(m.position.z - z) > 8) continue;
         const [hw, hl] = HALF[a.type]; const o = pushOut(m, hw, hl, x, z, r); if (o) { x += o[0]; z += o[1]; }
       }
+      for (const m of extraSolids()) {
+        if (Math.abs(m.position.x - x) > 8 || Math.abs(m.position.z - z) > 8) continue;
+        const o = pushOut(m, 1.1, 2.3, x, z, r); if (o) { x += o[0]; z += o[1]; }
+      }
     }
     return [x, z];
   }
@@ -83,6 +88,11 @@ export function buildTraffic(scene, world) {
         // buses pause for a pedestrian close by, and stop when a rider asks to get off
         if (a.stopReq) target = 0;
         else if (!a.rider && foot && Math.hypot(a.mesh.position.x - foot.x, a.mesh.position.z - foot.z) < 6) target = 0;
+      }
+      // brake behind robot taxis travelling the same way
+      for (const m of extraSolids()) {
+        const dx = m.position.x - px, dz = m.position.z - pz, lz = dx * fs + dz * fc; if (lz <= 0 || lz > look + 6) continue;
+        if (Math.abs(dx * fc - dz * fs) < hw + 1.3 && Math.cos(m.rotation.y - a.h) > 0.5) target = Math.min(target, Math.max(0, (lz - hl - 4.5) * 1.2));
       }
       for (const o of agents) {
         if (o === a || o.axis !== a.axis || o.c !== a.c || o.dir !== a.dir) continue;
@@ -123,7 +133,10 @@ export function buildTraffic(scene, world) {
   }
   function turnAround(a, n, oldC) { a.axis = a.axis === 'x' ? 'z' : 'x'; a.p = oldC; a.c = n; a.dir = oldC > 0 ? -1 : 1; }
 
-  return { agents, update, push };
+  return { agents, parked, update, push, setExtraSolids: (f) => { extraSolids = f; },
+    // A stolen car stops being a fixed obstacle while it moves; it becomes one again when parked.
+    unpark: (m) => { const i = solids.indexOf(m); if (i >= 0) solids.splice(i, 1); },
+    repark: (m) => { if (!solids.includes(m)) solids.push(m); } };
 }
 
 // ------------------------------------------------------------------ streetcar

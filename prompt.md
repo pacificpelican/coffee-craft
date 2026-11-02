@@ -56,3 +56,17 @@
 - sometimes after a good conversation with an NPC they may ask if you want to exchange numbers.  If you say yes then you will have them as a contact in your Chat app on your smartphone; every once in a while they may send you (an AI-written where possible) message and you might see it in your notifications and can click it to go to the Chat app
 - would be cool if the game had relatively easy ability to mod or customize eventually, but that isn't the top priority and I don't expect any tooling around that now, just forethought if possible.
 - the logo could be some kind of cool coffee mug with the city in negative space, or a coffee mug with a picture of the streetcar from the game on it, or something cool.
+
+---
+
+# issues in Coffee Craft
+- robo taxi glides through space undetected, cars drive right through it, doesn't seem to be subject to the same physics that other cars do
+- UI buttons can sometimes have orange text with a background that makes it hard to read, seems to show up on mobile, good example is the button to buy a sketchy crystal (or other stuff) under the bridge
+- Store purchases happen automatically instead of going to a purchase confirmation screen like restaurant dishes do, can be hard to tell that purchase has been made especially on mobile with sound off, maybe add buy confirmation screens for store items as well, or something 
+- could we tweak the design for cyclists?  I know we have gone through a few rounds of design in this game, first round looks, then more angled--I am wondering, can we keep the current cyclists but make them them a small minority of the overall cyclists and add a new, more blocky-shaped cyclist?  Or maybe this group have motorcycles?
+- can we occasionally have NPCs riding the rental scooters or robot taxis?  And could we have a handful more, like 20% or so more scooters lying around?
+- if a property that had a business becomes liquidated, when the player tries to go in, instead of just the notification about it being shuttered that happens now, could there also be an option to re-open it by buying the property?  It should be a pretty low price for the property but a more steep price for upgrade--you should have do at least 2 of the major projects that you can currently do on existing businesses to get the doors open; could help longer playability by making properties re-usable 
+- the terms make it clear this is a game for adults; maybe we could have somewhere on the intro screen a little bit of small-ish print that says the game is intended for 18+ maybe with a link to the terms in that text
+- not sure if any of these changes will break previous versions of the game but maybe they will can we please bump that version number that appears in the debug tab to 1.0 from 0.1
+- Could we add another app?  I was thinking that we could add a game called 'Car Stealer' that allows the player to essentially play the game's map but on the phone (and in a parallel universe with no consequences for the current game) and with almost all normal gameplay features (food, business, the phone, etc.) disabled but the player can now steal parked cars and drive around in them.  NPCs can also be talked to as well, but they should be very suspicious in tone; also the player should be some kind of basic dude, much like the game player lady but just different for the mini-game and a dude
+- Maybe there could be a jazz station on the music app too?  Similar to the others but jazz?  And please have that be the music playing always during the 'Car Stealer' mini-game

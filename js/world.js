@@ -603,7 +603,7 @@ export function buildWorld(scene, defList) {
   }
 
   function buildScooters() {
-    const pts = [[-31, -54.5], [100, 6.5], [31, -54.5], [-87, 6.5], [20, 54.5], [-15, 54.5], [10, 6.5], [45, -7.5], [-87, 54.5]];
+    const pts = [[-31, -54.5], [100, 6.5], [31, -54.5], [-87, 6.5], [20, 54.5], [-15, 54.5], [10, 6.5], [45, -7.5], [-87, 54.5], [-45, -54.5], [80, 54.5]];
     pts.forEach(([x, z], idx) => world.scooters.push({ id: idx, x, z, h: rand(0, 6), mesh: null }));
   }
   return world;

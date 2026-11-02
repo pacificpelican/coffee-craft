@@ -1,5 +1,6 @@
 // "Robot Driver" ride-share: a driverless white car you order from the phone. It drives the street grid to you,
-// flashes its lights, then takes you to a chosen place. It lives outside the ambient traffic system.
+// flashes its lights, then takes you to a chosen place. Neighbors also hail ambient robot cars now and then.
+// The cars are solid for traffic and pedestrians (see traffic.setExtraSolids) and yield to both.
 import * as THREE from '../vendor/three.module.min.js';
 import { mat } from './actors.js';
 import { signTexture } from './art.js';
@@ -67,15 +68,25 @@ function makeRoboCar(style, flash) {
 }
 
 export function buildRideshare(scene, world, cb) {
-  const flash = new THREE.MeshBasicMaterial({ color: '#7fe9ff' });
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 16, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#5ee6ff', transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
   beam.position.y = 8; beam.visible = false;
-  let car = null, phase = 'idle', t = 0;
   const S = { phase: 'idle', plate: '', dest: null, fare: 0, len: 0 };
-  let pos = [0, 0], h = 0, v = 0, wp = [], idx = 1, dir = [0, 1], lidar = null, leave = 0, waited = 0;
+  let me = null; // the player's car
+  let amb = null, ambCool = 25; // one ambient neighbor trip at a time
+  let t = 0;
 
-  const setPhase = (p) => { phase = p; S.phase = p; };
-  const place = () => { car.g.position.set(pos[0] - Math.cos(h) * LANE, 0.2, pos[1] + Math.sin(h) * LANE); car.g.rotation.y = h; };
+  const allTrips = () => [me, amb].filter(Boolean);
+  const setPhase = (T, p) => { T.phase = p; if (T === me) S.phase = p; };
+  const place = (T) => { T.car.g.position.set(T.pos[0] - Math.cos(T.h) * LANE, 0.2, T.pos[1] + Math.sin(T.h) * LANE); T.car.g.rotation.y = T.h; };
+
+  function makeTrip(style, startWp) {
+    const flash = new THREE.MeshBasicMaterial({ color: '#7fe9ff' });
+    const car = makeRoboCar(style, flash); scene.add(car.g);
+    const T = { car, flash, phase: 'coming', pos: [...startWp[0]], h: 0, v: 0, wp: startWp, idx: 1, dir: [0, 1], leave: 0, waited: 0, stuck: 0, ignore: 0 };
+    T.h = Math.atan2(startWp[1][0] - startWp[0][0], startWp[1][1] - startWp[0][1]); place(T);
+    return T;
+  }
+  const dispose = (T) => { scene.remove(T.car.g); T.flash.dispose(); };
 
   function destinations(tram) {
     const out = [], seen = new Set();
@@ -86,87 +97,158 @@ export function buildRideshare(scene, world, cb) {
   }
   const estimate = (from, dest) => { const len = length(route(snap(from.x, from.z), snap(dest.x, dest.z))); return { len, fare: fareFor(len) }; };
 
-  function order(player, dest) {
-    if (phase !== 'idle') return false;
-    const here = snap(player.x, player.z);
-    // start from a street intersection a fair way off
+  // A street intersection a fair way from (x, z) for a car to start from.
+  function startNear(x, z, lo, hi) {
     const starts = [];
-    for (const a of R) for (const b of R) { const d = Math.hypot(a - player.x, b - player.z); if (d > 50 && d < 130) starts.push([a, b]); }
-    const st = starts.length ? pick(starts) : [R[0], R[0]];
-    wp = route(snap(st[0], st[1]), here);
+    for (const a of R) for (const b of R) { const d = Math.hypot(a - x, b - z); if (d > lo && d < hi) starts.push([a, b]); }
+    return starts.length ? pick(starts) : [R[0], R[0]];
+  }
+
+  function order(player, dest) {
+    if (me) return false;
+    const here = snap(player.x, player.z);
+    const st = startNear(player.x, player.z, 50, 130);
+    let wp = route(snap(st[0], st[1]), here);
     if (wp.length < 2 || length(wp) < 1) wp = [pt(here), pt(here)];
     const style = Math.floor(Math.random() * 3);
-    car = makeRoboCar(style, flash); lidar = car.lidar; scene.add(car.g); car.g.add(beam);
+    me = makeTrip(style, wp); me.car.g.add(beam);
     S.plate = `RD-${String(Math.floor(rand(100, 999)))}`; S.dest = dest; S.style = ['pod', 'wagon', 'bubble'][style];
     const e = estimate(player, dest); S.len = e.len; S.fare = e.fare; S.eta = Math.round(length(wp) / 9);
-    pos = [...wp[0]]; idx = 1; v = 0; waited = 0;
-    h = Math.atan2(wp[1][0] - wp[0][0], wp[1][1] - wp[0][1]); place();
-    setPhase('coming');
+    setPhase(me, 'coming');
     return true;
   }
 
   function cancel() {
-    if (!car) return;
-    scene.remove(car.g); car = null; beam.visible = false; setPhase('idle'); S.dest = null;
+    if (!me) return;
+    me.car.g.remove(beam); dispose(me); me = null; beam.visible = false; S.phase = 'idle'; S.dest = null;
   }
 
   function board() {
-    if (phase !== 'waiting') return false;
-    const A = snap(pos[0], pos[1]), B = snap(S.dest.x, S.dest.z);
-    wp = route(A, B); wp[0] = [...pos]; idx = 1; v = 0; beam.visible = false; setPhase('riding');
+    if (!me || me.phase !== 'waiting') return false;
+    const A = snap(me.pos[0], me.pos[1]), B = snap(S.dest.x, S.dest.z);
+    me.wp = route(A, B); me.wp[0] = [...me.pos]; me.idx = 1; me.v = 0; beam.visible = false; setPhase(me, 'riding');
     return true;
   }
 
-  // yield to ambient traffic directly ahead of us
-  function blocked(traffic) {
-    const sx = Math.sin(h), cz = Math.cos(h), px = pos[0] - Math.cos(h) * LANE, pz = pos[1] + Math.sin(h) * LANE;
+  // Distance to the nearest thing directly ahead: other cars, people on foot, other robot cars.
+  function blocked(T, traffic, people) {
+    const sx = Math.sin(T.h), cz = Math.cos(T.h), px = T.pos[0] - Math.cos(T.h) * LANE, pz = T.pos[1] + Math.sin(T.h) * LANE;
     let gap = 99;
-    for (const a of traffic) {
-      const dx = a.mesh.position.x - px, dz = a.mesh.position.z - pz, fwd = dx * sx + dz * cz, lat = Math.abs(dx * cz - dz * sx);
-      if (fwd > 0 && fwd < 10 && lat < 2.4) gap = Math.min(gap, fwd);
-    }
+    const test = (x, z, reach, half) => {
+      const dx = x - px, dz = z - pz, fwd = dx * sx + dz * cz, lat = Math.abs(dx * cz - dz * sx);
+      if (fwd > 0 && fwd < reach && lat < half) gap = Math.min(gap, fwd);
+    };
+    for (const a of traffic || []) test(a.mesh.position.x, a.mesh.position.z, 10, 2.4);
+    for (const o of allTrips()) if (o !== T) test(o.car.g.position.x, o.car.g.position.z, 11, 2.6);
+    if (!T.ignore) for (const p of people) if (p !== T.npc) test(p.x, p.z, 9, 1.8);
     return gap;
   }
 
-  function update(dt, traffic) {
-    if (!car) return;
-    t += dt; lidar.rotation.y += dt * 7;
-    if (phase === 'waiting') {
-      flash.color.set(Math.floor(t * 4) % 2 ? '#7fe9ff' : '#ffd24a'); beam.visible = true; beam.material.opacity = 0.2 + 0.1 * Math.sin(t * 6);
-      waited += dt; if (waited > 150) { cancel(); cb.expired?.(); }
-      return;
+  // Shared driving step for the player's car and ambient cars. Returns 'end' when the last waypoint is reached.
+  function drive(T, dt, traffic, people) {
+    if (T.phase === 'leaving') {
+      T.leave -= dt; T.v = Math.min(CRUISE, T.v + 5 * dt); T.pos[0] += T.dir[0] * T.v * dt; T.pos[1] += T.dir[1] * T.v * dt; place(T);
+      return T.leave <= 0 ? 'gone' : null;
     }
-    if (phase === 'leaving') {
-      leave -= dt; v = Math.min(CRUISE, v + 5 * dt); pos[0] += dir[0] * v * dt; pos[1] += dir[1] * v * dt; place();
-      if (leave <= 0) { scene.remove(car.g); car = null; setPhase('idle'); }
-      return;
-    }
-    flash.color.set('#9ff2ff');
-    const tg = wp[idx]; let dx = tg[0] - pos[0], dz = tg[1] - pos[1]; const d = Math.hypot(dx, dz);
+    const tg = T.wp[T.idx]; const dx = tg[0] - T.pos[0], dz = tg[1] - T.pos[1]; const d = Math.hypot(dx, dz);
     if (d < 0.5) {
-      if (idx < wp.length - 1) { idx++; return; }
-      if (phase === 'coming') { setPhase('waiting'); waited = 0; cb.waiting?.(S); return; }
-      const A = snap(pos[0], pos[1]), B = snap(S.dest.x, S.dest.z);
-      const side = (B.axis === 'x' ? S.dest.z - B.c : S.dest.x - B.c) >= 0 ? 1 : -1;
-      const curb = B.axis === 'x' ? [pos[0], B.c + side * 7.5] : [B.c + side * 7.5, pos[1]];
-      setPhase('leaving'); leave = 5; flash.color.set('#7fe9ff');
-      cb.arrived?.(S, curb); return;
+      if (T.idx < T.wp.length - 1) { T.idx++; return null; }
+      return 'end';
     }
-    dir = [dx / d, dz / d];
-    const th = Math.atan2(dx, dz), turn = Math.abs(angDiff(h, th));
+    T.dir = [dx / d, dz / d];
+    const th = Math.atan2(dx, dz), turn = Math.abs(angDiff(T.h, th));
     let target = CRUISE;
-    if (idx < wp.length - 1) target = Math.min(target, 3 + d * 0.9); else target = Math.min(target, 1 + d * 1.1);
+    if (T.idx < T.wp.length - 1) target = Math.min(target, 3 + d * 0.9); else target = Math.min(target, 1 + d * 1.1);
     if (turn > 0.6) target = Math.min(target, 2);
-    const gap = traffic ? blocked(traffic) : 99; if (gap < 10) target = Math.min(target, Math.max(0, (gap - 4) * 1.2));
-    v += clamp(target - v, -14 * dt, 5 * dt);
-    h += angDiff(h, th) * Math.min(1, dt * 4);
-    pos[0] += dir[0] * v * dt; pos[1] += dir[1] * v * dt; place();
+    const gap = blocked(T, traffic, people); if (gap < 10) target = Math.min(target, Math.max(0, (gap - 4) * 1.2));
+    // stuck for a long time behind a pedestrian: creep on, people get nudged aside
+    if (T.v < 0.3 && gap < 10) { T.stuck += dt; if (T.stuck > 12) { T.ignore = 3; T.stuck = 0; } } else T.stuck = Math.max(0, T.stuck - dt);
+    if (T.ignore > 0) T.ignore -= dt;
+    T.v += clamp(target - T.v, -14 * dt, 5 * dt);
+    T.h += angDiff(T.h, th) * Math.min(1, dt * 4);
+    T.pos[0] += T.dir[0] * T.v * dt; T.pos[1] += T.dir[1] * T.v * dt; place(T);
+    return null;
+  }
+
+  function curbFor(T, dest) {
+    const B = snap(T.pos[0], T.pos[1]);
+    const side = (B.axis === 'x' ? dest.z - B.c : dest.x - B.c) >= 0 ? 1 : -1;
+    return B.axis === 'x' ? [T.pos[0], B.c + side * 7.5] : [B.c + side * 7.5, T.pos[1]];
+  }
+  const leave = (T) => { setPhase(T, 'leaving'); T.leave = 5; T.flash.color.set('#7fe9ff'); };
+
+  function updateMe(dt, traffic, people) {
+    if (!me) return;
+    me.car.lidar.rotation.y += dt * 7;
+    if (me.phase === 'waiting') {
+      me.flash.color.set(Math.floor(t * 4) % 2 ? '#7fe9ff' : '#ffd24a'); beam.visible = true; beam.material.opacity = 0.2 + 0.1 * Math.sin(t * 6);
+      me.waited += dt; if (me.waited > 150) { cancel(); cb.expired?.(); }
+      return;
+    }
+    if (me.phase !== 'leaving') me.flash.color.set('#9ff2ff');
+    const r = drive(me, dt, traffic, people);
+    if (r === 'gone') { dispose(me); me = null; S.phase = 'idle'; return; }
+    if (r !== 'end') return;
+    if (me.phase === 'coming') { setPhase(me, 'waiting'); me.waited = 0; cb.waiting?.(S); return; }
+    const curb = curbFor(me, S.dest);
+    leave(me); cb.arrived?.(S, curb);
+  }
+
+  // ---- ambient neighbor trips: a walker hails a car, rides to a random door, and walks on.
+  function startAmbient(npcs, player) {
+    const cands = npcs.list.filter((e) => e.kind === 'walker' && e.state === 'walk' && !e.scooter && !e.goScooter && e.mesh.visible && !e.pet && Math.hypot(e.x - player.x, e.z - player.z) < 90);
+    if (!cands.length) return;
+    const npc = pick(cands), here = snap(npc.x, npc.z), st = startNear(npc.x, npc.z, 40, 110);
+    let wp = route(snap(st[0], st[1]), here);
+    if (wp.length < 2 || length(wp) < 1) wp = [pt(here), pt(here)];
+    amb = makeTrip(Math.floor(Math.random() * 3), wp); amb.npc = npc;
+    npc.state = 'stand'; npc.hailing = true;
+  }
+  function releaseNpc(T, x, z) {
+    const e = T.npc; if (!e) return;
+    e.hailing = false; e.state = 'inside'; e.timer = 0.2; e.inside = null;
+    if (x !== undefined) { e.x = x; e.z = z; }
+  }
+  function updateAmbient(dt, traffic, people, npcs, player) {
+    if (!amb) {
+      ambCool -= dt;
+      if (ambCool <= 0) { ambCool = rand(35, 80); startAmbient(npcs, player); }
+      return;
+    }
+    const T = amb, e = T.npc;
+    T.car.lidar.rotation.y += dt * 7;
+    if (T.phase === 'coming' && e.state !== 'stand') { // the neighbor got talked to / wandered off: cancel the pickup
+      leave(T); T.dir = [Math.sin(T.h), Math.cos(T.h)];
+    }
+    const r = drive(T, dt, traffic, people);
+    if (r === 'gone') { dispose(T); amb = null; return; }
+    if (r !== 'end') return;
+    if (T.phase === 'coming') {
+      e.state = 'inside'; e.timer = 1e9; e.mesh.visible = false; e.hailing = false;
+      const dest = pick(world.doors); T.dest = dest;
+      const A = snap(T.pos[0], T.pos[1]), B = snap(dest.x, dest.z);
+      T.wp = route(A, B); T.wp[0] = [...T.pos]; T.idx = 1; T.v = 0; setPhase(T, 'riding');
+      return;
+    }
+    const curb = curbFor(T, T.dest);
+    leave(T);
+    npcs.relocate(e, curb[0], curb[1]); e.mesh.position.set(e.x, e.y, e.z); releaseNpc(T);
+  }
+
+  function update(dt, traffic, foot, walkers, npcs, player) {
+    t += dt;
+    const people = [];
+    if (foot) people.push(foot);
+    if (walkers) for (const w of walkers) if (w.mesh.visible && w.state !== 'inside') people.push(w);
+    updateMe(dt, traffic, people);
+    if (npcs && player) updateAmbient(dt, traffic, people, npcs, player);
   }
 
   return {
     update, order, cancel, board, destinations, estimate, status: () => S,
-    phase: () => phase,
-    carPos: () => (car ? { x: car.g.position.x, z: car.g.position.z, h } : null),
-    center: () => ({ x: pos[0], z: pos[1], h, v }),
+    phase: () => (me ? me.phase : 'idle'),
+    carPos: () => (me ? { x: me.car.g.position.x, z: me.car.g.position.z, h: me.h } : null),
+    center: () => ({ x: me.pos[0], z: me.pos[1], h: me.h, v: me.v }),
+    meshes: () => allTrips().map((T) => T.car.g),
   };
 }

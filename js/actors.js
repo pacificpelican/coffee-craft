@@ -94,6 +94,11 @@ export function makePlayerModel() {
   return makeHuman({ skin: '#d9a27a', shirt: '#2f4358', skirt: '#2f3b40', pants: '#2f3b40', hair: '#2b1e14', hairStyle: 'long', cap: null, slim: true, bag: '#d9772b', shoes: '#4a3020', scale: 1.0 });
 }
 
+// Car Stealer's protagonist: a plain guy in a grey hoodie and jeans.
+export function makeDudeModel() {
+  return makeHuman({ skin: '#c98f66', shirt: '#6a6f73', pants: '#3b5169', hair: '#3a2a1e', hairStyle: 'short', cap: null, hoodie: true, slim: false, shoes: '#2b2f2a', scale: 1.04 });
+}
+
 // ------------------------------------------------------------------ parrots
 export function makeParrot(color) {
   const g = new THREE.Group();
@@ -237,7 +242,21 @@ export function makeVehicle(type) {
     g.add(wheel(0.4, 0.14, 0, 0.4, 0.9)); g.add(wheel(0.4, 0.14, 0, 0.4, -0.9));
     const r = box(0.4, 0.7, 0.3, '#2f3b40'); r.position.set(0, 1.25, -0.2); g.add(r);
     const hd = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), mat('#d9772b')); hd.position.set(0, 1.75, -0.15); g.add(hd);
-  } else { // bicycle / scooter
+  } else if (Math.random() < 0.8) { // bicycle / scooter, blocky rider (the common look)
+    const bw = (z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.14, 6), mat('#1f2320')); m.rotation.z = Math.PI / 2; m.position.set(0, 0.38, z); return m; };
+    g.add(bw(0.75)); g.add(bw(-0.75));
+    const top = box(0.1, 0.1, 1.5, color); top.position.set(0, 0.68, 0); g.add(top);
+    const down = box(0.1, 0.1, 0.9, color); down.position.set(0, 0.5, 0.1); down.rotation.x = -0.5; g.add(down);
+    const seat = box(0.22, 0.08, 0.34, '#2b2f2a'); seat.position.set(0, 0.84, -0.4); g.add(seat);
+    const bar = box(0.62, 0.07, 0.07, '#2b2f2a'); bar.position.set(0, 1.12, 0.62); g.add(bar);
+    const shirt = pick(TOY);
+    for (const x of [-0.12, 0.12]) { const lg = box(0.2, 0.62, 0.22, '#2f3b40'); lg.position.set(x, 0.75, -0.2); lg.rotation.x = -0.35; g.add(lg); }
+    const torso = box(0.5, 0.72, 0.32, shirt); torso.position.set(0, 1.42, -0.1); torso.rotation.x = 0.45; g.add(torso);
+    for (const x of [-0.3, 0.3]) { const arm = box(0.12, 0.12, 0.7, shirt); arm.position.set(x, 1.4, 0.34); arm.rotation.x = 0.35; g.add(arm); }
+    const head = box(0.34, 0.34, 0.34, pick(['#f1c9a0', '#d9a27a', '#b57a55', '#8a5a3c'])); head.position.set(0, 1.95, 0.2); g.add(head);
+    const helmet = box(0.4, 0.16, 0.4, '#d9772b'); helmet.position.set(0, 2.17, 0.2); g.add(helmet);
+    const pack = box(0.4, 0.5, 0.22, '#2f3b40'); pack.position.set(0, 1.45, -0.4); pack.rotation.x = 0.45; g.add(pack);
+  } else { // bicycle / scooter, the original rounded rider
     g.add(wheel(0.36, 0.08, 0, 0.36, 0.7)); g.add(wheel(0.36, 0.08, 0, 0.36, -0.7));
     const fr = box(0.08, 0.08, 1.4, color); fr.position.y = 0.6; g.add(fr);
     const r = box(0.35, 0.7, 0.25, '#4f7a96'); r.position.set(0, 1.15, -0.1); g.add(r);

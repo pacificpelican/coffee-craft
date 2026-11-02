@@ -21,15 +21,21 @@ export function initAudio() {
   nextTime = ctx.currentTime + 0.2;
   timer = setInterval(schedule, 100);
   nextTranceAt = ctx.currentTime + 150 + Math.random() * 120;
-  setChannel(channel);
+  applyChannel(locked || userChannel);
 }
 
 export function setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05); }
 export const isMuted = () => muted;
-export function getChannel() { return channel; }
+export function getChannel() { return userChannel; }
 
-export function setChannel(c) {
-  channel = c;
+// The listener's pick (userChannel) is kept while a mini-game can lock the radio to one channel.
+let userChannel = 'ambient', locked = null;
+export function setChannel(c) { userChannel = c; if (!locked) applyChannel(c); }
+export function lockChannel(c) { locked = c; applyChannel(c); }
+export function unlockChannel() { locked = null; applyChannel(userChannel); }
+
+function applyChannel(c) {
+  channel = c; step = 0;
   if (!ctx) return;
   if (noiseSrc) { try { noiseSrc.stop(); } catch {} noiseSrc = null; }
   if (c === 'noise') {
@@ -74,15 +80,45 @@ function schedule() {
   const now = ctx.currentTime;
   if (!trance && channel === 'ambient' && now > nextTranceAt) setTrance(true, 70 + Math.random() * 40);
   if (trance && now > tranceUntil) { trance = false; nextTranceAt = now + 160 + Math.random() * 200; step = 0; }
-  const bpm = channel === 'ambient' ? (trance ? 128 : 66) : 72;
+  const bpm = channel === 'ambient' ? (trance ? 128 : 66) : channel === 'jazz' ? 124 : 72;
   const dur = 60 / bpm / 4; // 16th
   while (nextTime < now + 0.3) {
     if (nextTime < now) nextTime = now;
     if (channel === 'ambient') (trance ? tranceStep : ambientStep)(nextTime, step, dur);
     else if (channel === 'classical') classicalStep(nextTime, step, dur);
+    else if (channel === 'jazz') jazzStep(nextTime + (step % 4 === 2 ? dur * 0.66 : 0), step, dur); // swung off-beats
     step++; nextTime += dur;
   }
 }
+
+// Jazz: walking bass, ride cymbal, piano comping and a wandering lead over a ii-V-I-VI loop.
+const JAZZ = [
+  { root: 38, voice: [53, 57, 60, 64], scale: [62, 64, 65, 67, 69, 71, 72, 74], next: 43 },
+  { root: 43, voice: [59, 62, 65, 69], scale: [67, 69, 71, 72, 74, 76, 77, 79], next: 36 },
+  { root: 36, voice: [55, 59, 64, 67], scale: [60, 62, 64, 65, 67, 69, 71, 72], next: 45 },
+  { root: 45, voice: [55, 61, 64, 69], scale: [69, 71, 73, 74, 76, 78, 79, 81], next: 38 },
+];
+let jazzNote = 4;
+function jazzStep(t, s, d) {
+  const c = JAZZ[Math.floor(s / 16) % 4], beat = Math.floor((s % 16) / 4);
+  if (s % 4 === 0) {
+    const n = [c.root, c.root + 7, c.root + 12, c.next + (c.next > c.root ? -1 : 1)][beat];
+    osc('triangle', mtof(n), t, d * 3.6, 0.24, musicBus, { attack: 0.008, lp: 700 });
+    osc('sine', mtof(n), t, d * 3.6, 0.18, musicBus, { attack: 0.008 });
+  }
+  if ([0, 4, 6, 8, 12, 14].includes(s % 16)) noise(t, 0.06, beat % 2 ? 0.09 : 0.06, 8000, 'highpass', musicBus);
+  if (s % 8 === 4) noise(t, 0.05, 0.1, 5000, 'highpass', musicBus);
+  if (s % 16 === 0 && Math.random() < 0.6) osc('sine', 90, t, 0.14, 0.2, musicBus, { slideTo: 45 });
+  if ((s % 16 === 6 || s % 16 === 11 || (s % 16 === 2 && Math.random() < 0.4)) && Math.random() < 0.85) {
+    c.voice.forEach((n, i) => osc('triangle', mtof(n), t, d * 3, 0.07, musicBus, { attack: 0.004, lp: 2200, detune: i * 3 }));
+  }
+  if (s % 2 === 0 && Math.random() < 0.5) {
+    jazzNote = Math.max(0, Math.min(c.scale.length - 1, jazzNote + pick3()));
+    const n = c.scale[jazzNote];
+    osc('triangle', mtof(n), t, d * (Math.random() < 0.3 ? 5 : 2.6), 0.09, musicBus, { attack: 0.02, lp: 2600, vibrato: true });
+  }
+}
+const pick3 = () => [-2, -1, -1, 1, 1, 2, 3][Math.floor(Math.random() * 7)];
 
 function ambientStep(t, s, d) {
   const bar = Math.floor(s / 64) % 4, chord = PROG[bar];

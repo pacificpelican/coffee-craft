@@ -9,7 +9,7 @@ import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -19,6 +19,7 @@ export function createPhone(G) {
   const S = () => G.state;
 
   function open(a, sub) {
+    if (G.stealer?.active()) return;
     app = a || null; if (sub) { tab = sub.tab || tab; bankTab = sub.bankTab || bankTab; chatWith = sub.chat || chatWith; }
     root.classList.remove('hidden'); G.setPaused(true); render();
   }
@@ -31,13 +32,19 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );
+  }
+
+  function stealerApp(el) {
+    el.append(h('h3', {}, '🚘 Car Stealer'), h('p', {}, 'A game inside your phone, set in a parallel version of this neighborhood. Nothing you do there affects your real game: no food, no shops, no bank. You are just a guy. Parked cars are right there.'),
+      h('p', { class: 'small' }, 'The locals are suspicious. Smooth jazz plays the whole time. Tap ✕ Exit Car Stealer to come home.'),
+      h('button', { class: 'btn', onclick: () => { close(); G.stealer.start(); } }, '▶ Play'));
   }
 
   function pickle(el) {
@@ -253,8 +260,9 @@ export function createPhone(G) {
       card.append(h('div', { class: 'kv' }, h('span', {}, 'Hours'), h('span', {}, hr(0), ' – ', hr(1))));
       if (b.type === 'coffee') card.append(h('div', { class: 'kv' }, h('span', {}, 'Roast'), h('select', { onchange: (e) => { b.roast = e.target.value; const r = DATA.roastStyles.find((x) => x.id === e.target.value); b.boost = (r?.buzz || 0); } }, ...DATA.roastStyles.filter((r) => S().roastsUnlocked.includes(r.id)).map((r) => h('option', { value: r.id, selected: b.roast === r.id }, r.name)))));
       card.append(h('div', { class: 'small' }, `Property ${money(b.propertyValue)} — location ${money(pb.location)}, condition ${money(pb.condition)}, assets ${money(pb.assets)}`));
+      if (b.state === 'renovating') card.append(h('p', { class: 'small' }, `🚧 Shuttered. Finish ${eco.RENOVATION_PROJECTS} major projects to reopen (${b.enhancements.length}/${eco.RENOVATION_PROJECTS}). Renovation costs are steep.`));
       card.append(h('div', { class: 'row' }, ...DATA.enhancements.map((e) => {
-        const done = b.enhancements.includes(e.id), cost = Math.round(b.propertyValue * e.cost);
+        const done = b.enhancements.includes(e.id), cost = eco.enhanceCost(b, e);
         return h('button', { class: 'btn' + (done ? '' : ' alt'), disabled: done, onclick: () => { if (eco.enhance(s, b, e.id)) { sfx('coin'); render(); } else G.notify('Not enough funds.'); } }, done ? `✓ ${e.name}` : `${e.name} ${money(cost)}`);
       })));
       el.append(card);
@@ -293,7 +301,7 @@ export function createPhone(G) {
   }
 
   function tDebug(el) {
-    el.append(kv('Storage', server.storage), kv('PHP server', server.available ? 'yes' : 'no (static)'), kv('AI chat enabled', server.ai ? 'yes' : 'no'), kv('AI provider', server.aiProvider || 'none'), kv('AI model', server.aiModel || '—'), kv('Logged in', server.user || 'no'), kv('Businesses', Object.keys(S().businesses).length), kv('Mods loaded', (DATA.modsLoaded || []).join(', ') || 'none'), kv('Version', '0.1'));
+    el.append(kv('Storage', server.storage), kv('PHP server', server.available ? 'yes' : 'no (static)'), kv('AI chat enabled', server.ai ? 'yes' : 'no'), kv('AI provider', server.aiProvider || 'none'), kv('AI model', server.aiModel || '—'), kv('Logged in', server.user || 'no'), kv('Businesses', Object.keys(S().businesses).length), kv('Mods loaded', (DATA.modsLoaded || []).join(', ') || 'none'), kv('Version', '1.0'));
         if (server.ai) {
           const out = h('p', { class: 'small' });
           el.append(h('button', { class: 'btn', onclick: async () => { out.textContent = 'Asking the AI…'; const t = await G.aiText('Reply in five words or fewer.', [{ role: 'user', content: 'Say hello to a coffee shop customer.' }]); out.textContent = t ? '✨ AI works: “' + t + '”' : '⚠ AI is enabled but did not answer. Is Ollama running and the model pulled? Set debug => true in config.local.php for details in the server log.'; } }, 'Test AI'), out);
@@ -332,7 +340,7 @@ export function createPhone(G) {
       h('p', { html: 'created by <a href="https://altaredwood.work" target="_blank" rel="noopener">Daniel McKeown</a>' }), h('p', { class: 'small' }, 'Alta Redwood Pictures. Library text: Kusamakura by Natsume Sōseki (1906).')));
   }
   function tTerms(el) {
-    el.append(h('p', { class: 'small' }, 'Last updated: October 31, 2026'), h('p', {}, 'Coffee Craft is a hobby game provided as is, with no warranty. It can run locally on your own machine or be deployed to a web server by whoever hosts it; the host is responsible for their deployment.'), h('p', {}, 'In-game businesses, people and events are fictional. Do not use AI-generated text as advice. Weed, alcohol and gambling appear only as fictional game content for adults.'), h('p', {}, 'Do not abuse the server or AI endpoints. The host may remove accounts at any time.'));
+    el.append(h('p', { class: 'small' }, 'Last updated: November 2, 2026'), h('p', {}, 'Coffee Craft is intended for players aged 18 and over. Do not play if you are under 18.'), h('p', {}, 'Coffee Craft is a hobby game provided as is, with no warranty. It can run locally on your own machine or be deployed to a web server by whoever hosts it; the host is responsible for their deployment.'), h('p', {}, 'In-game businesses, people and events are fictional. Do not use AI-generated text as advice. Weed, alcohol and gambling appear only as fictional game content for adults.'), h('p', {}, 'Do not abuse the server or AI endpoints. The host may remove accounts at any time.'));
   }
   function tPrivacy(el) {
     el.append(h('p', { class: 'small' }, 'Last updated: October 31, 2026'), h('p', {}, 'Without an account, your game is saved only in your browser (localStorage). With an account, your name, a salted password hash and your game save are stored by the server host (JSON files or MySQL/MariaDB as configured).'), h('p', {}, 'If AI is enabled, text you type in conversations and a summary of game state are sent to the configured AI provider (a local Ollama instance or a cloud service chosen by the host). Do not type personal information.'), h('p', {}, 'You can delete your account and data from Settings → Account at any time. No analytics or ads are included.'));
@@ -391,7 +399,7 @@ export function createPhone(G) {
   }
   function music(el) {
     const cur = getChannel();
-    el.append(h('h3', {}, '🎵 Radio Fog'), ...[['ambient', 'Ambient / Trance'], ['classical', 'Classical Strings'], ['noise', 'White Noise'], ['off', 'Muted']].map(([id, nm]) => h('div', { class: 'app', style: 'margin:6px 0;' + (cur === id ? 'background:#e3b93c' : ''), onclick: () => { setChannel(id); S().musicChannel = id; render(); } }, nm)));
+    el.append(h('h3', {}, '🎵 Radio Fog'), ...[['ambient', 'Ambient / Trance'], ['classical', 'Classical Strings'], ['jazz', 'Jazz Lounge'], ['noise', 'White Noise'], ['off', 'Muted']].map(([id, nm]) => h('div', { class: 'app', style: 'margin:6px 0;' + (cur === id ? 'background:#e3b93c' : ''), onclick: () => { setChannel(id); S().musicChannel = id; render(); } }, nm)));
   }
   function store(el) {
     el.append(h('h3', {}, '⬇ App Downloader'), h('p', { class: 'small' }, 'Installed apps. More arrive in later versions.'), ...APPS.map(([id, ic, nm]) => h('div', { class: 'kv' }, h('span', {}, ic + ' ' + nm), h('span', { class: 'tag' }, 'installed'))));

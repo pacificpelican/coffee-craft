@@ -194,7 +194,7 @@ function inspections(state) {
   if (!owned.length) return;
   const chance = 0.03 + (100 - state.rep) * 0.004 + state.scrutiny * 0.004;
   if (Math.random() < chance) {
-    const b = pick(owned);
+    const b = pick(owned.filter((x) => x.state === 'open')); if (!b) return;
     const kind = pick(['health board inspection', 'fire marshal visit']);
     const fine = randInt(300, 2500) * (state.rep < 35 ? 2 : 1);
     state.bank.cash -= fine; b.buzz = clamp(b.buzz - 3, 0, 100);
@@ -339,6 +339,43 @@ function reopen(state, b) {
 }
 
 // Player actions ------------------------------------------------------------
+// A liquidated property can be bought cheaply, but its doors stay shut until the player finishes enough major projects.
+export const RENOVATION_PROJECTS = 2;
+export const RENOVATION_MARKUP = 2.5;
+export const vacantPrice = (b) => Math.round(b.propertyValue * 0.12);
+export const reopenTypes = (state) => (donutUnlocked(state) ? ['coffee', 'restaurant', 'donut'] : ['coffee', 'restaurant']);
+export function buyVacant(state, b, type) {
+  if (b.state !== 'vacant' || !reopenTypes(state).includes(type)) return false;
+  const price = vacantPrice(b);
+  if (state.bank.cash < price) return false;
+  state.bank.cash -= price;
+  Object.assign(b, {
+    owner: 'player', state: 'renovating', type, style: null, name: pick(NEW_NAMES) + ' (yours)', tier: 1, hours: [...DEFAULT_HOURS[type]], vacantDays: 0,
+    baseQuality: randInt(50, 70), buzz: 20, reputation: 45, savings: 5000, inventoryValue: 8000, debt: 0, lender: 'none', enhancements: [], boost: 0, gambling: false,
+    roast: 'medium', newMenu: GENERIC_MENUS[type], generic: true,
+    supply: { beans: 'rainier', cups: 'paper', ingredients: 'pike', packaging: 'paperbox', payment: 'stripey' },
+  });
+  emit('news', { text: `A new owner buys a shuttered building and starts renovations.`, bizId: b.id, kind: 'good' });
+  emit('bizchange', { id: b.id });
+  return true;
+}
+
+export const enhanceCost = (b, e) => Math.round(b.propertyValue * e.cost * (b.state === 'renovating' ? RENOVATION_MARKUP : 1));
+export function enhance(state, b, id) {
+  const e = DATA.enhancements.find((x) => x.id === id);
+  if (!e || b.enhancements.includes(id)) return false;
+  const cost = enhanceCost(b, e);
+  if (state.bank.cash < cost) return false;
+  state.bank.cash -= cost; b.propertyValue += Math.round(b.propertyValue * e.value); b.enhancements.push(id); b.buzz = clamp(b.buzz + 4, 0, 100);
+  if (b.state === 'renovating' && b.enhancements.length >= RENOVATION_PROJECTS) {
+    b.state = 'open';
+    emit('news', { text: `${b.name} reopens its doors after a full renovation.`, bizId: b.id, kind: 'good' });
+    emit('notify', { text: `${b.name} is open for business!`, kind: 'good' });
+    emit('bizchange', { id: b.id });
+  }
+  return true;
+}
+
 export function bailout(state, amount) {
   const max = avgShopValue(state) * 100;
   amount = clamp(Math.round(amount), 1, max);
@@ -348,15 +385,6 @@ export function bailout(state, amount) {
 }
 export const bailoutMax = (state) => Math.round(avgShopValue(state) * 100);
 export const needsBailout = (state) => state.bank.cash < avgShopValue(state) * 0.5;
-
-export function enhance(state, b, id) {
-  const e = DATA.enhancements.find((x) => x.id === id);
-  if (!e || b.enhancements.includes(id)) return false;
-  const cost = Math.round(b.propertyValue * e.cost);
-  if (state.bank.cash < cost) return false;
-  state.bank.cash -= cost; b.propertyValue += Math.round(b.propertyValue * e.value); b.enhancements.push(id); b.buzz = clamp(b.buzz + 4, 0, 100);
-  return true;
-}
 
 export function hireTroublemaker(state, target) {
   state.bank.cash -= 2500; target.buzz = clamp(target.buzz - 15, 0, 100); target.reputation = clamp(target.reputation - 6, 0, 100);
