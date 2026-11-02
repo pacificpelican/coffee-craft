@@ -1,15 +1,16 @@
 // Smartphone UI: home screen, Settings (tabs), Menus, IRL Coffee, News, Chat, Music, App Downloader.
-import { h, money, esc, fmtClock } from './util.js';
+import { h, money, esc, fmtClock, clamp } from './util.js';
 import { DATA } from './data.js';
 import { server, account, aiText, aiJson } from './api.js';
 import * as eco from './economy.js';
 import { LOGO_SVG, foodSVG, svgURI, bagSVG, kindFor } from './art.js';
 import { getChannel, setChannel, sfx } from './audio.js';
 import { playPickleball } from './minigames.js';
+import { BOOKS } from './books.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['alta', '🎬', 'Alta Redwood'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['alta', '🎬', 'Alta Redwood'], ['books', '📚', 'Books'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -32,13 +33,47 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, books: booksApp, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );
+  }
+
+  // E-book reader: public-domain excerpts, split into screens of about 900 characters; the page you reach is remembered.
+  const COVERS = {
+    moby: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140"><rect width="100" height="140" rx="6" fill="#1f3a52"/><path d="M0 100 Q25 90 50 100 T100 100 V140 H0Z" fill="#2e5a7d"/><path d="M12 92 Q20 60 52 66 Q78 70 84 92 Q50 100 12 92Z" fill="#e9eef0"/><circle cx="66" cy="80" r="2.4" fill="#1f3a52"/><path d="M52 66 Q54 50 62 44 M58 58 Q66 52 72 50" stroke="#9fc4dc" stroke-width="2" fill="none"/><text x="50" y="22" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f2e7c8">MOBY-DICK</text></svg>',
+    jane: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140"><rect width="100" height="140" rx="6" fill="#5a2a35"/><rect x="8" y="8" width="84" height="124" rx="3" fill="none" stroke="#d8b46a" stroke-width="1.5"/><path d="M50 52 L50 100 M38 84 Q50 70 62 84 M44 60 Q50 46 56 60" stroke="#d8b46a" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="50" cy="104" r="3" fill="#d8b46a"/><text x="50" y="30" text-anchor="middle" font-family="Georgia,serif" font-size="14" fill="#f2e7c8">JANE EYRE</text></svg>',
+  };
+  const screensOf = (b) => {
+    const out = []; let cur = [], n = 0;
+    for (const p of b.pages) { if (n && n + p.length > 900) { out.push(cur); cur = []; n = 0; } cur.push(p); n += p.length; }
+    if (cur.length) out.push(cur);
+    return out;
+  };
+  let readingId = null;
+  function booksApp(el) {
+    const s = S(); const prog = (s.reading ||= {});
+    const book = BOOKS.find((b) => b.id === readingId);
+    if (!book) {
+      el.append(h('h3', {}, '📚 Books'), h('p', { class: 'small' }, 'Free public-domain e-books. Each includes an opening excerpt.'));
+      for (const b of BOOKS) {
+        const total = screensOf(b).length, at = (prog[b.id] || 0) + 1;
+        el.append(h('div', { class: 'bizcard', style: 'display:flex;gap:12px;align-items:center;cursor:pointer', onclick: () => { readingId = b.id; render(); } },
+          h('div', { html: COVERS[b.id], style: 'width:64px;flex:none' }),
+          h('div', {}, h('h4', {}, b.title), h('div', { class: 'small' }, `${b.author} · ${b.year}`), h('div', { class: 'small' }, prog[b.id] ? `Continue — page ${at} of ${total}` : `Excerpt · ${total} pages`))));
+      }
+      return;
+    }
+    const screens = screensOf(book), i = Math.min(prog[book.id] || 0, screens.length - 1);
+    const go = (d) => { prog[book.id] = clamp(i + d, 0, screens.length - 1); render(); };
+    el.append(h('div', { class: 'row' }, h('button', { class: 'btn alt', onclick: () => { readingId = null; render(); } }, '← Library')),
+      h('h3', {}, book.title), h('div', { class: 'small' }, `${book.author} · ${book.chapter}`),
+      h('div', { class: 'ebook', style: 'font-family:Georgia,serif;font-size:16px;line-height:1.6;margin:10px 0;text-align:left' }, ...screens[i].map((p) => h('p', { style: 'margin:0 0 .8em' }, p))),
+      h('div', { class: 'row' }, h('button', { class: 'btn', disabled: i === 0, onclick: () => go(-1) }, '◀ Prev'), h('span', { class: 'small' }, `Page ${i + 1} of ${screens.length}`), h('button', { class: 'btn', disabled: i === screens.length - 1, onclick: () => go(1) }, 'Next ▶')));
+    if (i === screens.length - 1) el.append(h('p', { class: 'small' }, `End of the excerpt. Read the whole book free at `, h('a', { href: book.gutenberg, target: '_blank', rel: 'noopener noreferrer' }, 'Project Gutenberg'), '.'));
   }
 
   // Alta Redwood Pictures: two videos, each a stacked card with logo, title and a play link (opens YouTube in a new tab).

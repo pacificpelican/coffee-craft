@@ -72,6 +72,7 @@ on the server. Serve over HTTPS.
 - `js/world.js`, `traffic.js`, `npcs.js`, `actors.js`, `art.js` — city, vehicles/streetcar/weather, people/animals, procedural art.
 - `js/rideshare.js` — Robot Driver cars (player trips and NPC rides).
 - `js/stock.js` — store inventories.
+- `js/books.js` — public-domain e-book excerpts (Project Gutenberg) for the phone's Books app.
 - `js/economy.js` — businesses, NPC demand, banks, bankruptcy, loans, buying and renovating liquidated properties.
 - `js/phone.js` — smartphone apps (including Car Stealer) and Settings tabs.
 - `js/minigames.js` — pickleball, roaster, espresso, fight.
