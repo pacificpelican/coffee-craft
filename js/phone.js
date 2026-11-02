@@ -9,7 +9,7 @@ import { playPickleball } from './minigames.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['alta', '🎬', 'Alta Redwood'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -32,13 +32,30 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );
+  }
+
+  // Alta Redwood Pictures: two videos, each a stacked card with logo, title and a play link (opens YouTube in a new tab).
+  const CROW_LOGO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="16" fill="#2f3b40"/><ellipse cx="46" cy="58" rx="24" ry="17" fill="#15181a" transform="rotate(-12 46 58)"/><circle cx="64" cy="40" r="12" fill="#15181a"/><path d="M74 38 L92 43 L74 47Z" fill="#d9a441"/><circle cx="67" cy="37" r="2.6" fill="#f4efe0"/><path d="M24 62 L6 76 L30 70Z" fill="#15181a"/><path d="M42 74 L40 88 M52 74 L52 88" stroke="#d9a441" stroke-width="3" stroke-linecap="round"/></svg>';
+  const PARROT_LOGO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="16" fill="#e6efd8"/><ellipse cx="46" cy="58" rx="20" ry="25" fill="#4fae43" transform="rotate(10 46 58)"/><ellipse cx="46" cy="64" rx="11" ry="15" fill="#b9d98a" transform="rotate(10 46 64)"/><circle cx="52" cy="30" r="15" fill="#5cc04c"/><ellipse cx="52" cy="38" rx="9" ry="7" fill="#aab4b8"/><path d="M60 26 Q76 28 70 42 Q64 38 60 36Z" fill="#e8892b"/><circle cx="56" cy="27" r="3" fill="#fff"/><circle cx="57" cy="27" r="1.5" fill="#15181a"/><path d="M36 78 L30 96 L44 84Z" fill="#2f7d3a"/></svg>';
+  function altaApp(el) {
+    const vids = [
+      ['The Local Crows', CROW_LOGO, 'https://youtu.be/DEMCbXPJJ0s', 'Watch the neighborhood crows go about their business.'],
+      ['The Quaker Parrot', PARROT_LOGO, 'https://www.youtube.com/watch?v=eI0T58xTx_o&t=96s&pp=0gcJCSsMAYcqIYzv', 'A green parrot with big opinions.'],
+    ];
+    el.append(h('h3', {}, '🎬 Alta Redwood Pictures'), h('p', { class: 'small' }, 'Films from Alta Redwood Pictures. Plays on YouTube in a new tab.'));
+    for (const [title, logo, url, blurb] of vids) {
+      el.append(h('div', { class: 'bizcard', style: 'text-align:center' },
+        h('div', { html: logo, style: 'width:96px;height:96px;margin:0 auto 6px' }),
+        h('h4', {}, title), h('div', { class: 'small' }, blurb),
+        h('a', { class: 'btn', href: url, target: '_blank', rel: 'noopener noreferrer', style: 'display:inline-block;margin-top:8px;text-decoration:none' }, '▶ Play on YouTube')));
+    }
   }
 
   function stealerApp(el) {
