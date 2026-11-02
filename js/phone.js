@@ -79,7 +79,22 @@ export function createPhone(G) {
       <g id="mapPin"><circle r="9" fill="#d03c4a" opacity=".25"><animate attributeName="r" values="5;13;5" dur="1.6s" repeatCount="indefinite"/></circle><circle r="4.5" fill="#d03c4a" stroke="#fff" stroke-width="1.6"/></g>
     </svg>`;
     const wrap = h('div', { class: 'mapwrap', html: svg });
-    el.append(h('h3', {}, '🗺️ Map'), h('p', { class: 'small' }, '📍 You are here · 🟠 streetcar line and stops · brown dots are places you can enter (tap one for its name).'), wrap);
+    const cap = h('div', { class: 'bizcard', style: 'min-height:1.4em;margin-top:6px' }, 'Tap a dot to see its name.');
+    el.append(h('h3', {}, '🗺️ Map'), h('p', { class: 'small' }, '📍 You are here · 🟠 streetcar line and stops · brown dots are places you can enter (tap one for its name).'), wrap, cap);
+    const sv = wrap.querySelector('svg'), ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('r', 5); ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#d03c4a'); ring.setAttribute('stroke-width', 1.6); ring.setAttribute('display', 'none'); sv.append(ring);
+    // Tapping picks the nearest dot, so small dots are easy to hit on touch screens (hover tooltips don't exist there).
+    sv.addEventListener('click', (ev) => {
+      const pt = sv.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const p = pt.matrixTransform(sv.getScreenCTM().inverse());
+      const spots = [...world.doors.map((d) => ({ x: d.x, z: d.z, label: d.label })), ...tram.stops.map((s) => ({ x: s.sx, z: s.sz, label: s.name + ' (streetcar stop)' }))];
+      let best = null, bd = 1e9;
+      for (const s of spots) { const dd = Math.hypot(s.x - p.x, s.z - p.y); if (dd < bd) { bd = dd; best = s; } }
+      const reach = 14 * ((X1 - X0) / (sv.getBoundingClientRect().width || 400)) / 2 + 4;
+      if (!best || bd > reach) { ring.setAttribute('display', 'none'); cap.textContent = 'Tap a dot to see its name.'; return; }
+      ring.setAttribute('cx', best.x); ring.setAttribute('cy', best.z); ring.setAttribute('display', 'inline');
+      cap.textContent = '📍 ' + best.label;
+    });
     const pin = wrap.querySelector('#mapPin');
     const place = () => pin.setAttribute('transform', `translate(${player.x.toFixed(1)} ${player.z.toFixed(1)})`);
     const tm = setInterval(() => { if (!pin.isConnected) return clearInterval(tm); place(); }, 400); place();
