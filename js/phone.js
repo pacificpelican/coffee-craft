@@ -17,15 +17,24 @@ const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roa
 export function createPhone(G) {
   const root = document.getElementById('phone');
   let app = null, tab = 'Account', bankTab = 'Overview', chatWith = null, irl = null, tows = null, towsBusy = false;
+  let live = false, clockT = null; // live: the world keeps running while the phone is open (reset to paused on every pickup)
   const S = () => G.state;
 
   function open(a, sub) {
     if (G.stealer?.active()) return;
     app = a || null; if (sub) { tab = sub.tab || tab; bankTab = sub.bankTab || bankTab; chatWith = sub.chat || chatWith; }
-    root.classList.remove('hidden'); G.setPaused(true); render();
+    if (!isOpen()) live = false;
+    root.classList.remove('hidden'); G.setPaused(!live); render();
+    clearInterval(clockT); clockT = setInterval(tickBar, 1000);
   }
-  function close() { root.classList.add('hidden'); G.setPaused(false); }
+  function close() { root.classList.add('hidden'); live = false; clearInterval(clockT); G.setPaused(false); }
   const isOpen = () => !root.classList.contains('hidden');
+  const pausesWorld = () => isOpen() && !live;
+  function tickBar() {
+    const s = S(), c = root.querySelector('.bar .ph-clock'), w = root.querySelector('.bar .ph-weather');
+    if (c) c.textContent = `Day ${s.day} · ${fmtClock(s.minutes)}`; if (w) w.textContent = s.weather || 'cloudy';
+  }
+  function toggleLive() { live = !live; G.setPaused(!live); render(); G.notify(live ? '▶ World running while you use the phone.' : '⏸ World paused.', { sound: false, ms: 1800 }); }
   function render() {
     const s = S();
     const screen = h('div', { class: 'screen' });
@@ -36,7 +45,10 @@ export function createPhone(G) {
       ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, books: booksApp, ask, store })[app](screen);
     }
     root.replaceChildren(
-      h('div', { class: 'bar' }, h('span', {}, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', {}, s.weather || 'cloudy'), h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close')),
+      h('div', { class: 'bar' }, h('span', { class: 'ph-clock' }, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', { class: 'ph-weather' }, s.weather || 'cloudy'),
+        h('div', { class: 'ph-btns' },
+          h('button', { class: 'ph-live' + (live ? ' on' : ''), title: live ? 'Pause the world while the phone is open' : 'Let the world keep running while the phone is open', 'aria-label': live ? 'Pause the world' : 'Run the world', 'aria-pressed': String(live), onclick: toggleLive }, live ? '⏸' : '▶'),
+          h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close'))),
       screen,
       h('button', { class: 'home', title: 'Close phone', onclick: close }),
     );
@@ -472,5 +484,5 @@ export function createPhone(G) {
     el.append(h('h3', {}, '⬇ App Downloader'), h('p', { class: 'small' }, 'Installed apps. More arrive in later versions.'), ...APPS.map(([id, ic, nm]) => h('div', { class: 'kv' }, h('span', {}, ic + ' ' + nm), h('span', { class: 'tag' }, 'installed'))));
   }
 
-  return { open, close, isOpen, render };
+  return { open, close, isOpen, pausesWorld, render };
 }

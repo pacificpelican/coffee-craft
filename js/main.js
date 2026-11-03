@@ -75,7 +75,7 @@ function openModal(build, onClose) {
   $('#modal').onclose = onClose;
 }
 function closeModal() {
-  $('#modal').classList.add('hidden'); modalOpen = false; paused = phone.isOpen() || !started;
+  $('#modal').classList.add('hidden'); modalOpen = false; paused = phone.pausesWorld() || !started;
   const f = $('#modal').onclose; $('#modal').onclose = null; f?.();
 }
 $('#modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
@@ -237,7 +237,7 @@ function toggleMute() { setMuted(!isMuted()); $('#btn-mute').textContent = isMut
 function togglePause() {
   if (!started) return;
   const p = $('#pause'); const show = p.classList.contains('hidden');
-  p.classList.toggle('hidden', !show); paused = show || modalOpen || phone.isOpen();
+  p.classList.toggle('hidden', !show); paused = show || modalOpen || phone.pausesWorld();
 }
 
 function wireUI() {
@@ -312,6 +312,7 @@ const npcNear = (r = 3.2) => nearestOf([...npcSys.list.filter((n) => n.state !==
 
 function handleActions() {
   const e = input.edge; input.edge = {};
+  if (phone.isOpen()) return; // a live phone lets the world run, but the player is busy staring at it
   if (player.ride === 'tram') { if (e.friendly || e.yes) alightTram(); return; }
   if (player.ride === 'bus') { if (e.friendly || e.yes) { player.bus.stopReq = true; notify('Stop requested — the bus will pull up.', { sound: false, ms: 2000 }); sfx('bell'); } return; }
   if (player.ride === 'robo') { if (e.friendly || e.yes) notify(pick(['Robot Driver: “I will stop at your destination. I have never missed one.”', 'Robot Driver: “Please remain seated. I am vibing.”', 'Robot Driver: “Did you know? I do not know either.”']), { sound: false, ms: 3500 }); return; }
