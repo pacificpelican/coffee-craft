@@ -6,6 +6,7 @@ import { sfx } from './audio.js';
 
 const TEAMS = ['Airplanes', 'Harbor Herons', 'Cedar Kings', 'Rain City Ravens', 'Tide Foxes', 'Granite Owls'];
 const TEAM_COLORS = ['#8fd3ff', '#5fae7a', '#d9a441', '#6b5b8a', '#e8892b', '#9aa0a6'];
+const KANGAROO_COLOR = '#d96a3a';
 const STAKE = 50, DURATION = 15000, TICKS = 60;
 let session = null;
 
@@ -16,7 +17,9 @@ const profitOf = (m) => Math.round(STAKE * (m.odds - 1));
 function makeGame(state) {
   const sport = isBasketball(state.minutes) ? 'basketball' : 'netball';
   const bball = sport === 'basketball';
-  const oppIdx = 1 + Math.floor(Math.random() * (TEAMS.length - 1)), opp = TEAMS[oppIdx];
+  const home = bball ? 'Airplanes' : 'Kangaroos', homeColor = bball ? TEAM_COLORS[0] : KANGAROO_COLOR;
+  const pool = TEAMS.map((n, i) => i).filter((i) => TEAMS[i] !== home);
+  const oppIdx = pick(pool), opp = TEAMS[oppIdx];
   const base = bball ? 0.5 : 0.78;
   const sa = base + rand(-0.06, 0.06), sb = base + rand(-0.06, 0.06);
   const pWinA = clamp(0.5 + ((sa - sb) / base) * 1.6, 0.25, 0.75);
@@ -32,9 +35,9 @@ function makeGame(state) {
   const a = sum('a'), b = sum('b'), total = a + b;
   const line = Math.round(TICKS * (sa + sb) * (bball ? 2.25 : 1)) - 0.5, gap = bball ? 10 : 6;
   return {
-    sport, opp, oppIdx, ev, a, b,
+    sport, opp, oppIdx, home, homeColor, ev, a, b,
     markets: [
-      { id: 'win', label: 'Airplanes win', odds: odds(pWinA), won: a > b },
+      { id: 'win', label: `${home} win`, odds: odds(pWinA), won: a > b },
       { id: 'opp', label: `${opp} win`, odds: odds(1 - pWinA), won: b > a },
       { id: 'over', label: `Total points over ${line}`, odds: 1.9, won: total > line },
       { id: 'blow', label: `Either team wins by ${gap}+`, odds: 3.2, won: Math.abs(a - b) >= gap },
@@ -55,7 +58,7 @@ function settle(G, s) {
   const taken = s.game.markets.filter((m) => s.bets[m.id]);
   s.net = taken.reduce((n, m) => n + (m.won ? profitOf(m) : -STAKE), 0);
   G.state.bank.cash += s.net;
-  if (taken.length) { G.notify(`🏀 Final: Airplanes ${s.game.a}–${s.game.b} ${s.game.opp}. Your positions: ${s.net >= 0 ? '+' : '−'}${money(Math.abs(s.net))}.`, { sound: false, ms: 6000 }); sfx(s.net >= 0 ? 'coin' : 'click'); }
+  if (taken.length) { G.notify(`🏀 Final: ${s.game.home} ${s.game.a}–${s.game.b} ${s.game.opp}. Your positions: ${s.net >= 0 ? '+' : '−'}${money(Math.abs(s.net))}.`, { sound: false, ms: 6000 }); sfx(s.net >= 0 ? 'coin' : 'click'); }
 }
 
 const elapsedOf = (s) => (s.settled ? DURATION : Math.min(DURATION, Date.now() - s.t0));
@@ -76,7 +79,7 @@ function courtSVG(g) {
     <rect x="2" y="2" width="196" height="106" rx="6" fill="${floor}"/>
     <rect x="6" y="6" width="188" height="98" fill="none" stroke="${line}" stroke-width="1.2"/>
     ${marks}${board(2)}${board(196)}${ring(8, 'hoopL')}${ring(192, 'hoopR')}
-    ${dots('b', TEAM_COLORS[g.oppIdx])}${dots('a', TEAM_COLORS[0])}
+    ${dots('b', TEAM_COLORS[g.oppIdx])}${dots('a', g.homeColor)}
     <circle id="ball" r="2.8" fill="${bb ? '#e8892b' : '#f4efe0'}" stroke="#1d2a33" stroke-width=".8"/>
     <text id="pop" x="100" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" stroke="#1d2a33" stroke-width=".6" opacity="0"></text>
     <circle cx="12" cy="12" r="3" fill="#e0443a"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" repeatCount="indefinite"/></circle>
@@ -91,11 +94,11 @@ export function mountHoops(el, G) {
   const scoreA = h('div', { style: 'font-size:30px;font-weight:bold;line-height:1' }, '0'), scoreB = h('div', { style: 'font-size:30px;font-weight:bold;line-height:1' }, '0');
   const clock = h('div', { style: 'font-size:12px;opacity:.85' }, '');
   const board = h('div', { style: 'display:flex;justify-content:space-between;align-items:center;background:#15181a;color:#f4efe0;-webkit-text-fill-color:#f4efe0;border-radius:10px;padding:8px 12px;margin-top:6px;text-align:center' },
-    h('div', {}, h('div', { style: 'font-size:11px;letter-spacing:.05em;color:#8fd3ff;-webkit-text-fill-color:#8fd3ff' }, 'AIRPLANES'), scoreA), clock,
+    h('div', {}, h('div', { style: `font-size:11px;letter-spacing:.05em;color:${g.homeColor};-webkit-text-fill-color:${g.homeColor}` }, g.home.toUpperCase()), scoreA), clock,
     h('div', {}, h('div', { style: `font-size:11px;letter-spacing:.05em;color:${TEAM_COLORS[g.oppIdx]};-webkit-text-fill-color:${TEAM_COLORS[g.oppIdx]}` }, g.opp.toUpperCase()), scoreB));
   const court = h('div', { html: courtSVG(g) });
   const markets = h('div', { style: 'margin-top:8px' });
-  box.append(h('div', { class: 'small', style: 'margin-bottom:4px' }, bb ? '🏀 Pacific Hoops League · Airplanes home' : '🥅 Late-Night Netball League · Airplanes home (no hoops on at this hour…)'), court, board, markets);
+  box.append(h('div', { class: 'small', style: 'margin-bottom:4px' }, bb ? '🏀 Pacific Hoops League · Airplanes home' : '🥅 Late-Night Netball League · Kangaroos home (no hoops on at this hour…)'), court, board, markets);
   el.append(box);
 
   const ev = g.ev, $p = (k) => court.querySelector(`[data-p="${k}"]`), ball = court.querySelector('#ball'), pop = court.querySelector('#pop');
@@ -148,7 +151,7 @@ export function mountHoops(el, G) {
       ball.setAttribute('cx', (Number(bp.getAttribute('cx')) + 3).toFixed(1)); ball.setAttribute('cy', (Number(bp.getAttribute('cy')) + 3 + Math.abs(Math.sin(e / 110)) * 3).toFixed(1));
     }
     for (const k of ['a', 'b']) hoops[k].setAttribute('stroke', last && last.team === k && dt < 700 ? '#fff36a' : '#e8602b');
-    if (last && dt < 900) { pop.textContent = `${last.team === 'a' ? 'AIRPLANES' : g.opp.toUpperCase()} +${last.pts}`; pop.setAttribute('opacity', String(1 - dt / 900)); } else pop.setAttribute('opacity', '0');
+    if (last && dt < 900) { pop.textContent = `${last.team === 'a' ? g.home.toUpperCase() : g.opp.toUpperCase()} +${last.pts}`; pop.setAttribute('opacity', String(1 - dt / 900)); } else pop.setAttribute('opacity', '0');
     const now = `${s.settled}|${Object.keys(s.bets).length}`;
     if (now !== sig) { sig = now; drawMarkets(); }
     requestAnimationFrame(frame);
