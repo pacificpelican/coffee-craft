@@ -73,6 +73,7 @@ on the server. Serve over HTTPS.
 - `js/rideshare.js` — Robot Driver cars (player trips and NPC rides).
 - `js/stock.js` — store inventories.
 - `js/books.js` — public-domain e-book excerpts (Project Gutenberg) for the phone's Books app.
+- `js/hoops.js` — the phone's Hoops app: a ~15 s simulated game (basketball noon–10 pm, netball otherwise) with one-tap prediction markets.
 - `js/economy.js` — businesses, NPC demand, banks, bankruptcy, loans, buying and renovating liquidated properties.
 - `js/phone.js` — smartphone apps (including Car Stealer) and Settings tabs.
 - `js/minigames.js` — pickleball, roaster, espresso, fight.

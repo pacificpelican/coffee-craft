@@ -7,10 +7,11 @@ import { LOGO_SVG, foodSVG, svgURI, bagSVG, kindFor } from './art.js';
 import { getChannel, setChannel, sfx } from './audio.js';
 import { playPickleball } from './minigames.js';
 import { BOOKS } from './books.js';
+import { mountHoops } from './hoops.js';
 
 const APPS = [
   ['settings', '⚙️', 'Settings'], ['menus', '🍜', 'Menus'], ['irl', '☕', 'IRL Coffee'], ['news', '📰', 'News'],
-  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['alta', '🎬', 'Alta Redwood'], ['books', '📚', 'Books'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
+  ['chat', '💬', 'Chat'], ['music', '🎵', 'Music'], ['pickle', '🏓', 'Pickleball'], ['map', '🗺️', 'Map'], ['robo', '🚗', 'Robot Driver'], ['stealer', '🚘', 'Car Stealer'], ['alta', '🎬', 'Alta Redwood'], ['books', '📚', 'Books'], ['hoops', '🏀', 'Hoops'], ['ask', '🤖', 'Ask AI'], ['store', '⬇️', 'App Downloader'],
 ];
 const TABS = ['Account', 'Stats', 'Diary', 'Purchases', 'Bank', 'Business', 'Roasts', 'TOWS', 'Controls', 'Debug', 'Credits', 'Terms', 'Privacy'];
 
@@ -42,7 +43,7 @@ export function createPhone(G) {
       screen.append(h('h3', { class: 'ph-title' }, h('span', { class: 'ph-logo', html: LOGO_SVG }), 'Phone'), h('div', { class: 'apps' }, ...APPS.map(([id, ic, nm]) => h('div', { class: 'app', onclick: () => { app = id; render(); } }, h('span', {}, ic), nm))));
     } else {
       screen.append(h('button', { class: 'btn alt', onclick: () => { app = null; render(); } }, '← Home'));
-      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, books: booksApp, ask, store })[app](screen);
+      ({ settings, menus, irl: irlApp, news, chat, music, pickle, map: mapApp, robo: roboApp, stealer: stealerApp, alta: altaApp, books: booksApp, hoops: (el) => mountHoops(el, G), ask, store })[app](screen);
     }
     root.replaceChildren(
       h('div', { class: 'bar' }, h('span', { class: 'ph-clock' }, `Day ${s.day} · ${fmtClock(s.minutes)}`), h('span', { class: 'ph-weather' }, s.weather || 'cloudy'),
