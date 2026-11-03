@@ -81,7 +81,15 @@ export function createPhone(G) {
       g.drawImage(img, 0, 0, W * k, Hh * k);
       g.fillStyle = '#efe6cc'; g.font = `${Math.max(11, Math.round(c.width / 36))}px Georgia, serif`; g.textBaseline = 'middle';
       g.fillText(`Coffee Craft by Daniel McKeown https://altaredwood.work — ${new Date().toLocaleString()}`, 8, Hh * k + bar / 2);
-      const a = document.createElement('a'); a.download = `Coffee_Craft_Phone_${new Date().toISOString().replace(/[:.]/g, '-')}.png`; a.href = c.toDataURL('image/png'); a.click();
+      const name = `Coffee_Craft_Phone_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+      const blob = await new Promise((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error('blank'))), 'image/png'));
+      // Phones: offer the native share sheet (save to Photos, etc.); otherwise fall back to a normal download.
+      const file = new File([blob], name, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Coffee Craft' }); return; } catch (e) { if (e.name === 'AbortError') return; }
+      }
+      const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob); document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       G.notify('📸 Phone screenshot saved.', { sound: false, ms: 2000 });
     } catch (e) { G.notify('Could not capture the phone screen.', { sound: false, ms: 2500 }); }
   }
