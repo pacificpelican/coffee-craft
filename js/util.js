@@ -31,6 +31,13 @@ export function h(tag, attrs = {}, ...kids) {
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
+// Commuter surge: 0 normally, ramping up to 1 across 7-9 am and 4-6 pm (smooth half-hour ramps either side).
+export function rushLevel(minutes) {
+  const hr = (minutes / 60) % 24;
+  const bump = (a, b, c, d) => (hr <= a || hr >= d ? 0 : hr < b ? (hr - a) / (b - a) : hr <= c ? 1 : (d - hr) / (d - c));
+  return Math.max(bump(6.5, 7.25, 8.75, 9.5), bump(15.5, 16.25, 17.75, 18.5));
+}
+
 // Saves a canvas as a PNG. Touch devices get the native share sheet first (Photos, Files, messaging); desktop and any failure fall back to a normal download.
 // Resolves 'shared', 'cancelled' or 'downloaded'.
 export async function saveCanvasPNG(canvas, name) {

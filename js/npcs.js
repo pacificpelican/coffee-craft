@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { makeHuman, makeSpecial, randomOutfit, animateHuman, makeParrot, makePetDog, makeLeash, updateLeash, makeAnimal } from './actors.js';
 import { C } from './world.js';
-import { rand, pick, randInt, angDiff } from './util.js';
+import { rand, pick, randInt, angDiff, rushLevel } from './util.js';
 import { DATA } from './data.js';
 
 // ---- sidewalk graph
@@ -67,6 +67,12 @@ export function buildNpcs(scene, world, count = 44) {
     e.persona.occupation = 'park regular';
     e.x = world.parkBounds.x0 + rand(2, 48); e.z = world.parkBounds.z0 + rand(28, 48); e.target = null; e.parkGoal = null;
   }
+  // commuter pool: sits hidden until the morning/evening rush
+  const extras = [];
+  for (let i = 0; i < Math.round(count * 0.55); i++) {
+    const e = spawn(makePersona(100 + i), makeHuman(randomOutfit()), 'walker');
+    e.extra = i; e.off = true; e.state = 'inside'; e.timer = 1e9; e.mesh.visible = false; extras.push(e);
+  }
   // under-the-bridge folk
   const dealers = ['Slim', 'Raven', 'Mouse'].map((nm, i) => {
     const o = randomOutfit(); o.shirt = '#3a3f40'; o.pants = '#2b2f2a'; o.cap = '#2b2f2a'; o.hairStyle = 'none';
@@ -106,9 +112,24 @@ export function buildNpcs(scene, world, count = 44) {
   function update(dt, t, player, env, minutes) {
     const hour = (minutes / 60) % 24;
     const nightQuiet = hour >= 1 && hour < 5;
+    const rush = rushLevel(minutes);
     for (const e of list) {
       const dx = e.x - player.x, dz = e.z - player.z;
       const far = dx * dx + dz * dz > 120 * 120;
+      if (e.extra !== undefined) {
+        const wanted = rush > (e.extra + 0.5) / extras.length;
+        const unseen = dx * dx + dz * dz > 45 * 45;
+        if (e.off) {
+          if (!wanted) continue;
+          let nid = -1;
+          for (let k = 0; k < 12; k++) { const c = Math.floor(Math.random() * nodes.length); const n = nodes[c]; if ((n.x - player.x) ** 2 + (n.z - player.z) ** 2 > 45 * 45) { nid = c; break; } }
+          if (nid < 0) continue;
+          e.off = false; e.state = 'walk'; e.node = nid; e.prev = null; e.x = nodes[nid].x + rand(-1, 1); e.z = nodes[nid].z + rand(-1, 1);
+          e.goDoor = false; e.mesh.visible = true; pickTarget(e);
+        } else if (!wanted && (e.state === 'inside' || (e.state === 'walk' && unseen && !e.scooter && !e.goScooter))) {
+          e.off = true; e.state = 'inside'; e.timer = 1e9; e.mesh.visible = false; e.goDoor = false; continue;
+        }
+      }
       if (e.state === 'inside') {
         e.timer -= dt; if (e.timer <= 0) { e.state = 'walk'; e.mesh.visible = true; e.inside = null; pickTarget(e); }
         continue;

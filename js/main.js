@@ -868,7 +868,7 @@ function tick(dt) {
   state.weather = env.weather;
   env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
   if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list); tramSys.update(dt); rideshare.update(dt, traffic.agents, player.ride || player.inside ? null : player, npcSys.list, npcSys, player);
+  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list, state.minutes); tramSys.update(dt); rideshare.update(dt, traffic.agents, player.ride || player.inside ? null : player, npcSys.list, npcSys, player);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);

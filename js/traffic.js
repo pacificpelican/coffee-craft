@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { makeVehicle, makeStreetcar, mat } from './actors.js';
 import { R, C } from './world.js';
-import { rand, pick, angDiff, clamp, lerp } from './util.js';
+import { rand, pick, angDiff, clamp, lerp, rushLevel } from './util.js';
 
 const LANE = { car: 2.5, bus: 2.7, motorcycle: 2.6, bicycle: 2.8, scooter: 2.8 };
 const SPEED = { car: [7, 11], bus: [5, 7], motorcycle: [9, 13], bicycle: [3, 4.5], scooter: [4, 6] };
@@ -17,6 +17,15 @@ export function buildTraffic(scene, world) {
     const a = { type, mesh, axis: horiz ? 'x' : 'z', c: pick(R), p: rand(-124, 124), dir: Math.random() < 0.5 ? 1 : -1, v: 0, vmax: rand(...SPEED[type]), h: 0, lane: LANE[type] };
     a.h = headingOf(a); agents.push(a);
   }
+  // commuter pool: parked far off-map until the morning/evening rush
+  const rushPool = [];
+  for (const [type, n] of [['car', 9], ['motorcycle', 2], ['bicycle', 2]]) for (let i = 0; i < n; i++) {
+    const mesh = makeVehicle(type); scene.add(mesh);
+    const horiz = Math.random() < 0.5;
+    const a = { type, mesh, axis: horiz ? 'x' : 'z', c: pick(R), p: 0, dir: Math.random() < 0.5 ? 1 : -1, v: 0, vmax: rand(...SPEED[type]), h: 0, lane: LANE[type], off: true };
+    a.h = headingOf(a); mesh.visible = false; mesh.position.set(9999, -50, 9999); agents.push(a); rushPool.push(a);
+  }
+  for (let i = rushPool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rushPool[i], rushPool[j]] = [rushPool[j], rushPool[i]]; }
   // parked cars along the curbs
   const parked = [], solids = [];
   for (const c of R) for (const axis of ['x', 'z']) for (const side of [-1, 1]) {
@@ -75,8 +84,23 @@ export function buildTraffic(scene, world) {
     return [x, z];
   }
 
-  function update(dt, foot, walkers) {
+  function update(dt, foot, walkers, minutes = 720) {
+    const rush = rushLevel(minutes);
+    rushPool.forEach((a, i) => {
+      const wanted = rush > (i + 0.5) / rushPool.length;
+      if (a.off && wanted) {
+        // appear at a random spot out of the player's sight
+        for (let k = 0; k < 12; k++) {
+          const p = rand(-124, 124), cx = a.axis === 'z' ? a.c : p, cz = a.axis === 'z' ? p : a.c;
+          if (!foot || Math.hypot(cx - foot.x, cz - foot.z) > 50) { a.p = p; a.v = 0; a.off = false; a.mesh.visible = true; break; }
+        }
+      } else if (!a.off && !wanted) {
+        const m = a.mesh.position;
+        if (!foot || Math.hypot(m.x - foot.x, m.z - foot.z) > 50) { a.off = true; a.mesh.visible = false; m.set(9999, -50, 9999); }
+      }
+    });
     for (const a of agents) {
+      if (a.off) continue;
       // follow gap
       let target = a.vmax;
       // brake for anyone on foot standing in the lane ahead
@@ -95,7 +119,7 @@ export function buildTraffic(scene, world) {
         if (Math.abs(dx * fc - dz * fs) < hw + 1.3 && Math.cos(m.rotation.y - a.h) > 0.5) target = Math.min(target, Math.max(0, (lz - hl - 4.5) * 1.2));
       }
       for (const o of agents) {
-        if (o === a || o.axis !== a.axis || o.c !== a.c || o.dir !== a.dir) continue;
+        if (o === a || o.off || o.axis !== a.axis || o.c !== a.c || o.dir !== a.dir) continue;
         const gap = (o.p - a.p) * a.dir;
         if (gap > 0 && gap < 9) target = Math.min(target, Math.max(0, o.v * (gap / 9) - (gap < 4 ? 2 : 0)));
       }
