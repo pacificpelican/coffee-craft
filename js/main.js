@@ -2,7 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { DATA, loadData } from './data.js';
 import { server, initServer, account, aiText, aiJson } from './api.js';
-import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt } from './util.js';
+import { h, $, rand, pick, clamp, angDiff, money, esc, fmtClock, randInt, saveCanvasPNG } from './util.js';
 import { stockFor, crystalStock } from './stock.js';
 import { LOGO_SVG, foodSVG, svgURI, BAG_MOTIFS, kindFor, sanitizeSVG } from './art.js';
 import { initAudio, setMuted, isMuted, sfx, setTrance, setChannel, lockChannel, unlockChannel } from './audio.js';
@@ -280,7 +280,7 @@ function takeShot() {
     g.fillStyle = '#23291f'; g.fillRect(0, r.height, c.width, bar);
     g.fillStyle = '#efe6cc'; g.font = `${Math.max(12, Math.round(c.width / 62))}px Georgia, serif`; g.textBaseline = 'middle';
     g.fillText(`Coffee Craft by Daniel McKeown https://altaredwood.work — ${new Date().toLocaleString()}`, 10, r.height + bar / 2);
-    box.replaceChildren(c, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { const a = document.createElement('a'); a.download = `Coffee_Craft_${new Date().toISOString().replace(/[:.]/g, '-')}.png`; a.href = c.toDataURL('image/png'); a.click(); } }, '💾 Save'), ...shotButtons()));
+    box.replaceChildren(c, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => saveCanvasPNG(c, `Coffee_Craft_${new Date().toISOString().replace(/[:.]/g, '-')}.png`).catch(() => notify('Could not save the screenshot.', { sound: false })) }, '💾 Save'), ...shotButtons()));
   };
   const shotButtons = () => [state.owns.drone && h('button', { class: 'btn alt', onclick: () => shot('drone') }, '🚁 Drone view'), state.owns.camera && h('button', { class: 'btn alt', onclick: () => shot('bw') }, '📷 Vintage B&W')];
   shot('normal');

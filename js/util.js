@@ -31,6 +31,20 @@ export function h(tag, attrs = {}, ...kids) {
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
+// Saves a canvas as a PNG. Touch devices get the native share sheet first (Photos, Files, messaging); desktop and any failure fall back to a normal download.
+// Resolves 'shared', 'cancelled' or 'downloaded'.
+export async function saveCanvasPNG(canvas, name) {
+  const blob = await new Promise((ok, no) => canvas.toBlob((b) => (b ? ok(b) : no(new Error('blank'))), 'image/png'));
+  const touch = window.matchMedia?.('(pointer: coarse)').matches;
+  const file = new File([blob], name, { type: 'image/png' });
+  if (touch && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Coffee Craft' }); return 'shared'; } catch (e) { if (e.name === 'AbortError') return 'cancelled'; }
+  }
+  const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob); document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  return 'downloaded';
+}
+
 export function fmtClock(minutes) {
   const m = Math.floor(minutes) % 1440;
   const hh = Math.floor(m / 60), mm = m % 60;
