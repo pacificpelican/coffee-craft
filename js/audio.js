@@ -109,47 +109,71 @@ function jazzStep(t, s, d) {
   if ([0, 4, 6, 8, 12, 14].includes(s % 16)) noise(t, 0.06, beat % 2 ? 0.09 : 0.06, 8000, 'highpass', musicBus);
   if (s % 8 === 4) noise(t, 0.05, 0.1, 5000, 'highpass', musicBus);
   if (s % 16 === 0 && Math.random() < 0.6) osc('sine', 90, t, 0.14, 0.2, musicBus, { slideTo: 45 });
-  if ((s % 16 === 6 || s % 16 === 11 || (s % 16 === 2 && Math.random() < 0.4)) && Math.random() < 0.85) {
-    c.voice.forEach((n, i) => osc('triangle', mtof(n), t, d * 3, 0.07, musicBus, { attack: 0.004, lp: 2200, detune: i * 3 }));
+  if ((s % 16 === 6 || s % 16 === 11 || (s % 16 === 2 && Math.random() < 0.4) || (s % 16 === 14 && Math.random() < 0.12)) && Math.random() < 0.85) {
+    const inv = Math.floor(Math.random() * 3), v = c.voice.map((n, i) => (i < inv ? n + 12 : n)); // random inversion
+    if (Math.random() < 0.2) v.push(c.voice[0] + 14); // occasional 9th
+    v.forEach((n, i) => osc('triangle', mtof(n), t, d * 3, 0.07, musicBus, { attack: 0.004, lp: 2200, detune: i * 3 }));
   }
   if (s % 2 === 0 && Math.random() < 0.5) {
     jazzNote = Math.max(0, Math.min(c.scale.length - 1, jazzNote + pick3()));
-    const n = c.scale[jazzNote];
+    const n = c.scale[jazzNote] + (Math.random() < 0.06 ? 12 : 0);
     osc('triangle', mtof(n), t, d * (Math.random() < 0.3 ? 5 : 2.6), 0.09, musicBus, { attack: 0.02, lp: 2600, vibrato: true });
   }
 }
 const pick3 = () => [-2, -1, -1, 1, 1, 2, 3][Math.floor(Math.random() * 7)];
+const rr = (a, b) => a + Math.random() * (b - a);
+const human = (t, ms = 18) => t + Math.random() * ms / 1000; // late-only jitter so notes never start in the past
 
+// Ambient: the same slow Am-F-C-G pads and pentatonic bells, but the bells now wander as a motif (with occasional echoes,
+// octave drops and rare sparkles), and the pad sometimes gains a quiet 9th, with a different drift each bar.
+let ambIdx = 4;
 function ambientStep(t, s, d) {
   const bar = Math.floor(s / 64) % 4, chord = PROG[bar];
-  if (s % 64 === 0) chord.forEach((n, i) => osc('sine', mtof(n - 12 + (i === 0 ? -12 : 0)), t, d * 66, 0.12, musicBus, { attack: 2, lp: 900, detune: i * 4 }));
-  if (s % 64 === 0) chord.forEach((n) => osc('triangle', mtof(n), t, d * 60, 0.05, musicBus, { attack: 3, lp: 1400 }));
-  if (s % 8 === 4 && Math.random() < 0.45) osc('sine', mtof(PENTA[Math.floor(Math.random() * PENTA.length)] + 12), t, d * 10, 0.07, musicBus, { attack: 0.02 });
+  if (s % 64 === 0) {
+    chord.forEach((n, i) => osc('sine', mtof(n - 12 + (i === 0 ? -12 : 0)), t, d * 66, 0.12, musicBus, { attack: rr(1.6, 2.6), lp: rr(800, 1000), detune: i * 4 + rr(-3, 3) }));
+    chord.forEach((n) => osc('triangle', mtof(n), t, d * 60, 0.05, musicBus, { attack: rr(2.5, 3.5), lp: rr(1250, 1550) }));
+    if (Math.random() < 0.5) osc('sine', mtof(chord[0] + 14), human(t, 400), d * 40, 0.035, musicBus, { attack: 3 });
+  }
+  if (s % 8 === 4 && Math.random() < 0.45) {
+    ambIdx = clampI(ambIdx + (Math.random() < 0.25 ? Math.floor(rr(-4, 5)) : [-1, 1][Math.floor(Math.random() * 2)]), 0, PENTA.length - 1);
+    const n = PENTA[ambIdx] + (Math.random() < 0.12 ? 0 : 12);
+    osc('sine', mtof(n), human(t), d * rr(7, 14), rr(0.05, 0.085), musicBus, { attack: 0.02 });
+    if (Math.random() < 0.22) osc('sine', mtof(n), t + d * 3, d * 8, 0.03, musicBus, { attack: 0.03 }); // soft echo
+  }
+  if (s % 8 === 0 && Math.random() < 0.07) osc('sine', mtof(PENTA[Math.floor(Math.random() * PENTA.length)] + 24), human(t, 60), d * 5, 0.035, musicBus, { attack: 0.01 }); // sparkle
 }
+const clampI = (v, a, b) => Math.max(a, Math.min(b, v));
 
+let tranceArp = [0, 1, 2, 1];
 function tranceStep(t, s, d) {
   const bar = Math.floor(s / 16) % 4, chord = PROG[bar];
   if (s % 4 === 0) osc('sine', 120, t, 0.18, 0.5, musicBus, { slideTo: 40 });
   if (s % 4 === 2) noise(t, 0.05, 0.12, 9000, 'highpass', musicBus);
   if (s % 2 === 1) osc('sawtooth', mtof(chord[0] - 24), t, d * 0.9, 0.12, musicBus, { lp: 500 });
-  const arp = [0, 1, 2, 1][s % 4], oct = (s % 8 > 3) ? 12 : 0;
-  osc('sawtooth', mtof(chord[arp] + 12 + oct), t, d * 1.4, 0.05, musicBus, { lp: 1800 + (s % 64) * 20, attack: 0.005 });
+  if (s % 64 === 0 && Math.random() < 0.6) tranceArp[Math.floor(Math.random() * 4)] = Math.floor(Math.random() * 3); // the arp slowly mutates
+  if (s % 64 === 32) tranceArp = [0, 1, 2, 1];
+  const arp = tranceArp[s % 4], oct = (s % 8 > 3) ? 12 : 0;
+  if (Math.random() > 0.06) osc('sawtooth', mtof(chord[arp] + 12 + oct + (Math.random() < 0.05 ? 12 : 0)), t, d * 1.4, rr(0.042, 0.056), musicBus, { lp: 1800 + (s % 64) * 20 + rr(-150, 150), attack: 0.005 });
   if (s % 16 === 0) chord.forEach((n) => osc('triangle', mtof(n), t, d * 16, 0.05, musicBus, { attack: 0.3, lp: 1200 }));
 }
 
+let classLead = [0, 2, 1, 2, 0, 1, 2, 1];
 function classicalStep(t, s, d) {
   const bar = Math.floor(s / 32) % 4, chord = PROG[bar];
-  const lead = [0, 2, 1, 2, 0, 1, 2, 1];
-  if (s % 4 === 0) {
-    const n = chord[lead[(s / 4) % 8 | 0]] + (Math.random() < 0.3 ? 12 : 0) + 12;
-    osc('sawtooth', mtof(n), t, d * 5, 0.07, musicBus, { attack: 0.12, lp: 2400, vibrato: true });
-    osc('sawtooth', mtof(n), t, d * 5, 0.04, musicBus, { attack: 0.15, lp: 2000, vibrato: true, detune: 9 });
+  if (s % 32 === 0 && Math.random() < 0.55) classLead[Math.floor(Math.random() * 8)] = Math.floor(Math.random() * 3); // phrase drifts
+  if (s % 128 === 96 && Math.random() < 0.5) classLead = [0, 2, 1, 2, 0, 1, 2, 1]; // and sometimes returns home
+  if (s % 4 === 0 && Math.random() > 0.06) {
+    const n = chord[classLead[(s / 4) % 8 | 0]] + (Math.random() < 0.3 ? 12 : 0) + 12;
+    const len = Math.random() < 0.15 ? 8 : 5;
+    osc('sawtooth', mtof(n), human(t, 12), d * len, 0.07, musicBus, { attack: rr(0.1, 0.16), lp: rr(2100, 2600), vibrato: true });
+    osc('sawtooth', mtof(n), t, d * len, 0.04, musicBus, { attack: 0.15, lp: 2000, vibrato: true, detune: rr(5, 13) });
   }
-  if (s % 32 === 0) chord.forEach((n) => osc('sawtooth', mtof(n - 12), t, d * 30, 0.05, musicBus, { attack: 0.8, lp: 1200, vibrato: true }));
+  if (s % 32 === 0) chord.forEach((n) => osc('sawtooth', mtof(n - 12), t, d * 30, 0.05, musicBus, { attack: rr(0.6, 1), lp: 1200, vibrato: true }));
   if (s % 4 === 2 && Math.random() < 0.28) { // zither
     const n = PENTA[Math.floor(Math.random() * PENTA.length)] + 12;
-    osc('triangle', mtof(n), t, 1.2, 0.09, musicBus, { attack: 0.003 });
+    osc('triangle', mtof(n), t, rr(0.9, 1.5), rr(0.075, 0.1), musicBus, { attack: 0.003 });
     osc('square', mtof(n * 2), t, 0.2, 0.02, musicBus, { attack: 0.002, lp: 3000 });
+    if (Math.random() < 0.15) osc('triangle', mtof(n + 12), t + d * 2, 0.9, 0.04, musicBus, { attack: 0.003 }); // ripple
   }
 }
 
