@@ -167,6 +167,8 @@ export function createPhone(G) {
       <rect x="130" y="69" width="56" height="64" fill="#5f8a4a" stroke="#3f6a32" stroke-width="1.5"/><text x="158" y="104" class="mt" text-anchor="middle" fill="#fff">Fernwood</text>
       ${pb ? `<rect x="${pb.x0}" y="${pb.z0}" width="${pb.x1 - pb.x0}" height="${pb.z1 - pb.z0}" fill="#7da35a" stroke="#4f7a3a" stroke-width="1.5"/><text x="${(pb.x0 + pb.x1) / 2}" y="${(pb.z0 + pb.z1) / 2}" class="mt" text-anchor="middle">Baloo's Park</text>` : ''}
       <polyline points="${line.map((p) => p.join(',')).join(' ')} ${line[0].join(',')}" fill="none" stroke="#d9772b" stroke-width="2.4" stroke-dasharray="6 3"/>
+      ${world.pier ? `<rect x="${world.pier.x1}" y="${world.pier.z0}" width="${world.pier.x0 - world.pier.x1}" height="${world.pier.z1 - world.pier.z0}" fill="#9a7650"/><text x="${(world.pier.x0 + world.pier.x1) / 2}" y="${world.pier.z1 + 7}" class="mt" text-anchor="middle">Pier</text>` : ''}
+      ${world.crane ? `<circle cx="${world.crane.x}" cy="${world.crane.z}" r="2.6" fill="#e0a82e" stroke="#333" stroke-width=".8"><title>Construction crane</title></circle>` : ''}
       ${world.doors.map((d) => `<circle cx="${d.x}" cy="${d.z}" r="2.2" fill="#8a4b2a"><title>${e(d.label)}</title></circle>`).join('')}
       ${tram.stops.map((s) => `<g><circle cx="${s.sx}" cy="${s.sz}" r="4.5" fill="#d9772b" stroke="#fff" stroke-width="1.2"/><text x="${s.sx}" y="${s.sz - 6}" class="mt" text-anchor="middle">${e(s.name)}</text></g>`).join('')}
       ${world.gate ? `<text x="${world.gate.x}" y="${world.gate.z}" class="mt" text-anchor="middle">⛩ Gate</text>` : ''}

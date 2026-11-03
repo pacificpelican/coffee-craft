@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.min.js';
 import { makeHuman, makeSpecial, randomOutfit, animateHuman, makeParrot, makePetDog, makeLeash, updateLeash, makeAnimal } from './actors.js';
 import { C } from './world.js';
+import { PIER_FOLK } from './pier.js';
 import { rand, pick, randInt, angDiff, rushLevel } from './util.js';
 import { DATA } from './data.js';
 
@@ -73,6 +74,12 @@ export function buildNpcs(scene, world, count = 44) {
     const e = spawn(makePersona(100 + i), makeHuman(randomOutfit()), 'walker');
     e.extra = i; e.off = true; e.state = 'inside'; e.timer = 1e9; e.mesh.visible = false; extras.push(e);
   }
+  // pier regulars: they hang around the Alta Redwood Pier and chat
+  PIER_FOLK.forEach(([x, z, heading, occupation, quirk], i) => {
+    const e = spawn(makePersona(300 + i), makeHuman(randomOutfit()), 'pier');
+    e.persona.occupation = occupation; e.persona.quirk = quirk;
+    e.x = x; e.z = z; e.heading = heading; e.state = 'stand'; e.pierY = 0.56; e.mesh.position.set(x, 0.56, z); e.mesh.rotation.y = heading; e.target = null;
+  });
   // under-the-bridge folk
   const dealers = ['Slim', 'Raven', 'Mouse'].map((nm, i) => {
     const o = randomOutfit(); o.shirt = '#3a3f40'; o.pants = '#2b2f2a'; o.cap = '#2b2f2a'; o.hairStyle = 'none';
@@ -135,7 +142,7 @@ export function buildNpcs(scene, world, count = 44) {
         continue;
       }
       if (e.state === 'chat') { e.chatT -= dt; if (e.chatT <= 0) e.state = 'walk'; animateHuman(e.mesh, 0, t); face(e, player.x, player.z, dt); continue; }
-      if (e.state === 'stand') { animateHuman(e.mesh, 0, t); e.mesh.position.set(e.x, 0.25, e.z); if (dx * dx + dz * dz < 36) face(e, player.x, player.z, dt); continue; }
+      if (e.state === 'stand') { animateHuman(e.mesh, 0, t); e.mesh.position.set(e.x, e.pierY ?? 0.25, e.z); if (dx * dx + dz * dz < 36) face(e, player.x, player.z, dt); continue; }
       if (e.state === 'pause') { e.timer -= dt; animateHuman(e.mesh, 0, t); if (e.timer <= 0) e.state = 'walk'; e.mesh.position.set(e.x, e.y, e.z); continue; }
       let tx, tz;
       if (e.kind === 'park') {

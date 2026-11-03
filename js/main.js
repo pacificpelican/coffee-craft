@@ -290,8 +290,10 @@ function takeShot() {
 function nearbyTargets() {
   const out = [];
   if (player.inside) return out;
-  if (cs) {
-    if (player.drive) return out;
+  if (player.ferris) return out;
+  if (player.onCrane) { if (Math.hypot(player.x - world.crane.x, player.z - world.crane.z) < 4) out.push({ kind: 'climbdown', dist: 0, label: 'Climb down the ladder' }); return out; }
+    if (cs) {
+      if (player.drive) return out;
     for (const m of traffic.parked) { const dd = Math.hypot(m.position.x - player.x, m.position.z - player.z); if (dd < 3.6) out.push({ kind: 'steal', m, dist: dd, label: 'Steal this car' }); }
     return out.sort((a, b) => a.dist - b.dist);
   }
@@ -308,11 +310,12 @@ function nearbyTargets() {
   }
   return out.sort((a, b) => a.dist - b.dist);
 }
-const npcNear = (r = 3.2) => nearestOf([...npcSys.list.filter((n) => n.state !== 'inside'), ...npcSys.animals.filter((a) => !a.airborne)], player.x, player.z, r);
+const npcNear = (r = 3.2) => (player.onCrane || player.ferris ? null : nearestOf([...npcSys.list.filter((n) => n.state !== 'inside'), ...npcSys.animals.filter((a) => !a.airborne)], player.x, player.z, r));
 
 function handleActions() {
   const e = input.edge; input.edge = {};
   if (phone.isOpen()) return; // a live phone lets the world run, but the player is busy staring at it
+  if (player.ferris) return;
   if (player.ride === 'tram') { if (e.friendly || e.yes) alightTram(); return; }
   if (player.ride === 'bus') { if (e.friendly || e.yes) { player.bus.stopReq = true; notify('Stop requested — the bus will pull up.', { sound: false, ms: 2000 }); sfx('bell'); } return; }
   if (player.ride === 'robo') { if (e.friendly || e.yes) notify(pick(['Robot Driver: “I will stop at your destination. I have never missed one.”', 'Robot Driver: “Please remain seated. I am vibing.”', 'Robot Driver: “Did you know? I do not know either.”']), { sound: false, ms: 3500 }); return; }
@@ -342,12 +345,77 @@ function activate(t) {
   if (t.kind === 'court') return openModal((c) => playPickleball(c, G_mini(), closeModal));
   if (t.kind === 'tramstop') return boardTram();
   if (t.kind === 'robo') { if (rideshare.board()) { player.ride = 'robo'; playerMesh.visible = false; sfx('door'); notify(`Buckled in. Heading to ${rideshare.status().dest.label}. Fare ${money(rideshare.status().fare)}.`, { sound: false, ms: 5000 }); } return; }
-  if (t.kind === 'bus') { player.ride = 'bus'; player.bus = t.a; t.a.rider = true; t.a.stopReq = false; playerMesh.visible = false; sfx('door'); notify('On the bus! ▶️ to request a stop and get off.', { sound: false, ms: 5000 }); }
+  if (t.kind === 'bus') { player.ride = 'bus'; player.bus = t.a; t.a.rider = true; t.a.stopReq = false; playerMesh.visible = false; sfx('door'); notify('On the bus! ▶️ to request a stop and get off.', { sound: false, ms: 5000 }); return; }
+  if (t.kind === 'climb') return climbCrane();
+  if (t.kind === 'climbdown') return descendCrane();
+  if (t.kind === 'ferris') return rideFerris();
+  if (t.kind === 'stall') return enterStall(t.it.stall);
+  if (t.kind === 'arcade') return enterArcade();
+  if (t.kind === 'flavor') notify(pick(t.it.text), { sound: false, ms: 4000 });
+}
+// ----------------------------------------------------------- Alta Redwood Pier & construction-site crane
+const STALLS = {
+  dogs: { name: 'Pier Dogs & Chowder', blurb: 'A man in a paper hat guards a steaming cart. “Everything is fresh. Some of it is fresher.”', menu: [
+    ['Pier Dog', 6, 'burger', 'Snappy dog, soft bun, mustard like a sunrise.'], ['Boardwalk Fries', 5, 'fries', 'Salty, crisp, gull-adjacent.'], ['Clam Chowder Bread Bowl', 11, 'pho', 'Creamy chowder in an edible bowl.']] },
+  taffy: { name: 'Salt & Taffy', blurb: 'Pastel stripes, a pulling machine and a cold-brew tap.', menu: [
+    ['Saltwater Taffy', 7, 'donut', 'A pull-apart box of pastel chew.'], ['Boba Milk Tea', 6, 'boba', 'Cold, sweet, pearls.'], ['Pier Cold Brew', 5, 'coffee', 'Strong enough to see the harbor.']] },
+};
+function enterStall(key) {
+  const S = STALLS[key]; if (!S) return;
+  const venue = { id: 'pier_' + key, name: S.name, type: 'stall', owner: 'public' };
+  sfx('door');
+  const show = (it) => openModal((m) => m.append(h('h3', {}, it[0]), itemImg(it[0], it[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, it[3]),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { if (state.bank.cash < it[1]) return notify('Not enough funds.'); buyItem(venue, it); purchased(it[0], it[1], () => enterStall(key)); } }, `👍 Buy ${money(it[1])}`), h('button', { class: 'btn warn', onclick: () => enterStall(key) }, '⛔ Back'))));
+  openModal((c) => c.append(h('h3', {}, S.name), h('p', { class: 'small' }, S.blurb),
+    h('div', { class: 'menu-items' }, ...S.menu.map((it) => h('div', { class: 'menu-item', onclick: () => show(it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(it[1]))))),
+    h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+}
+function enterArcade() {
+  sfx('door');
+  const play = (name, cost, odds, prize, win, lose) => {
+    if (state.bank.cash < cost) return notify('Not enough funds.');
+    state.bank.cash -= cost; sfx('coin');
+    const won = Math.random() < odds;
+    if (won) { state.bank.cash += prize; sfx('coin'); }
+    openModal((c) => c.append(h('h3', {}, won ? '🎉 ' + name + ': winner!' : name), h('p', {}, won ? `${win} You collect ${money(prize)}.` : lose), h('p', { class: 'small' }, `Balance ${money(state.bank.cash)}.`),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => play(name, cost, odds, prize, win, lose) }, `Play again ${money(cost)}`), h('button', { class: 'btn alt', onclick: enterArcade }, 'Back'), h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+  };
+  openModal((c) => c.append(h('h3', {}, '🕹 Alta Arcade'), h('p', { class: 'small' }, 'Flashing lights, a carpet that has seen things, and tickets that spill like confetti.'),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => play('Skee-Ball', 3, 0.3, 8, 'The ball drops into the top ring!', 'The ball rolls politely into the 10-point hole.') }, `Skee-Ball ${money(3)} · win ${money(8)}`)),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => play('Claw Machine', 2, 0.12, 20, 'The claw holds on all the way to the chute!', 'The claw lets go at the last second. Classic.') }, `Claw Machine ${money(2)} · win ${money(20)}`)),
+    h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+}
+function rideFerris() {
+  const F = world.pier.ferris;
+  if (state.bank.cash < 4) return notify('The Sky Wheel costs $4.', { sound: false });
+  state.bank.cash -= 4; sfx('coin');
+  player.ferris = { i: F.nearestBottom(), t: 0 }; player.sitting = null; playerMesh.visible = true;
+  notify('Sky Wheel: enjoy the view over the water and the neighbourhood.', { sound: false, ms: 5000 });
+}
+function climbCrane() {
+  const C = world.crane;
+  player.onCrane = true; C.active = true; player.x = C.x; player.z = C.z; player.y = C.topY; player.speed = 0;
+  cam.zoomT = 1.4;
+  notify('You climbed the crane! Walk the jib for the view. Return to the ladder (mast) to climb down.', { sound: false, ms: 6000 });
+}
+function descendCrane() {
+  const C = world.crane;
+  player.onCrane = false; C.active = false;
+  [player.x, player.z] = collide(C.x, C.z - 2.8, 0, 0.45); player.y = groundHeight(world, player.x, player.z);
+  cam.zoomT = 1;
+  notify('Back on solid ground.', { sound: false });
+}
+function craneStep(ox, oz, nx, nz) {
+  const C = world.crane;
+  if (C.ok(nx, nz)) return [nx, nz];
+  if (C.ok(nx, oz)) return [nx, oz];
+  if (C.ok(ox, nz)) return [ox, nz];
+  return [ox, oz];
 }
 // ----------------------------------------------------------- Car Stealer (phone mini-game, parallel universe)
 function startStealer() {
   if (cs || !started) return;
-  if (player.ride || player.scooter || player.inside || player.sitting) return notify('Finish what you are doing first.', { sound: false });
+  if (player.ride || player.scooter || player.inside || player.sitting || player.onCrane || player.ferris) return notify('Finish what you are doing first.', { sound: false });
   const mesh = makeDudeModel();
   cs = { saved: { x: player.x, y: player.y, z: player.z, heading: player.heading }, lady: playerMesh, mesh, stolen: 0 };
   scene.remove(playerMesh); playerMesh = mesh; scene.add(mesh);
@@ -866,9 +934,9 @@ function frame() {
 function tick(dt) {
   if (!cs) { state.day = Math.floor(state.minutes / 1440) + 1; eco.advance(state, dt * 2); }
   state.weather = env.weather;
-  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt);
+  env.update(dt, state.minutes, camera.position, world.lamps, world.nightGlow); world.water?.tick(dt); world.pier?.tick(dt); world.crane?.tick(dt, t);
   if (world.homeGlow) { const k = 0.8 + Math.sin(t * 1.7) * 0.2; world.homeGlow.light.intensity = 14 * k; world.homeGlow.halo.material.opacity = 0.18 + 0.12 * k; }  if (world.flame) world.flame.scale.y = 0.8 + Math.sin(t * 11) * 0.2;
-  traffic.update(dt, player.ride || player.scooter || player.inside ? null : player, npcSys.list, state.minutes); tramSys.update(dt); rideshare.update(dt, traffic.agents, player.ride || player.inside ? null : player, npcSys.list, npcSys, player);
+  traffic.update(dt, player.ride || player.scooter || player.inside || player.onCrane || player.ferris ? null : player, npcSys.list, state.minutes); tramSys.update(dt); rideshare.update(dt, traffic.agents, player.ride || player.inside ? null : player, npcSys.list, npcSys, player);
   npcSys.update(dt, t, player, env, state.minutes);
   handleActions();
   movePlayer(dt);
@@ -930,6 +998,10 @@ function movePlayer(dt) {
     [nx, nz] = collide(nx, nz, player.y, 0.7); if (Math.hypot(nx - player.x - Math.sin(player.heading) * s.v * dt, nz - player.z - Math.cos(player.heading) * s.v * dt) > 0.05) s.v *= 0.5;
     player.x = clamp(nx, BOUNDS.x0, BOUNDS.x1); player.z = clamp(nz, BOUNDS.z0, BOUNDS.z1); player.y = groundHeight(world, player.x, player.z);
     s.x = player.x; s.z = player.z; s.h = player.heading; s.mesh.position.set(s.x, player.y, s.z); s.mesh.rotation.y = s.h; player.speed = Math.abs(s.v) * 0.2;
+  } else if (player.ferris) {
+    const f = player.ferris, F = world.pier.ferris; f.t += dt;
+    const p = F.pos(f.i); player.x = p.x; player.y = p.y; player.z = p.z; player.speed = 0;
+    if (f.t >= F.period) { player.ferris = null; player.x = F.exit.x; player.z = F.exit.z; player.y = groundHeight(world, player.x, player.z); notify('Hope you enjoyed the ride!', { sound: false }); }
   } else if (!player.sitting) {
     const spd = (wob ? 2.6 : (input.run ? 7 : 4)) * (player.eating > 0 ? 0.3 : 1);
     const yc = Math.cos(cam.yaw), ys = Math.sin(cam.yaw);
@@ -937,7 +1009,7 @@ function movePlayer(dt) {
     const m = Math.hypot(ax, az); player.speed = m > 0.1 ? spd : 0;
     if (m > 0.1) {
       let nx = player.x + (ax / Math.max(1, m)) * spd * dt, nz = player.z + (az / Math.max(1, m)) * spd * dt;
-      [nx, nz] = collide(nx, nz, player.y, 0.45);
+      [nx, nz] = player.onCrane ? craneStep(player.x, player.z, nx, nz) : collide(nx, nz, player.y, 0.45);
       player.x = clamp(nx, BOUNDS.x0, BOUNDS.x1); player.z = clamp(nz, BOUNDS.z0, BOUNDS.z1);
       player.heading += angDiff(player.heading, Math.atan2(ax, az)) * Math.min(1, dt * 12);
     }
@@ -945,7 +1017,7 @@ function movePlayer(dt) {
   }
   playerMesh.position.set(player.x, player.y + (player.scooter ? 0.35 : 0), player.z); playerMesh.rotation.y = player.heading;
   playerMesh.rotation.x = player.eating > 0 ? Math.sin(t * 8) * 0.06 : 0;
-  animateHuman(playerMesh, player.scooter || player.ride ? 0 : player.speed, t, !!player.sitting || !!player.scooter || player.ride === 'tram');
+  animateHuman(playerMesh, player.scooter || player.ride ? 0 : player.speed, t, !!(player.sitting || player.ferris) || !!player.scooter || player.ride === 'tram');
   const spin = (keys.has('e') ? 1 : 0) - (keys.has('q') ? 1 : 0);
   if (spin) cam.yaw += spin * dt * 1.8;
   cam.zoom += (cam.zoomT - cam.zoom) * Math.min(1, dt * 8);

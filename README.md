@@ -91,6 +91,8 @@ Venue interiors are modal screens, not walkable 3D rooms.
 The fight mini-game is only played as sparring at the Cedar Crane Dojo (the alley door behind Eastgate Apartments, open 6:00–23:00, $40 per bout, belts rise with wins); random street fights don't exist.
 
 The alley behind Night Owl Market hides the Mushroom Therapy Center (open 11:00–03:00): functional mushroom products with small perks, and magic mushrooms that let you understand animals in plain English for a while.
+
+The Alta Redwood Pier juts out into the canal where the yellow boat used to be: a Sky Wheel Ferris wheel ($4 ride), a carousel, the Alta Arcade (Skee-Ball and a claw machine), food stalls, a bait shack, benches and a few regulars to chat with. Across from the vacant laundromat, the old vacant lot is now a construction site with a tower crane: ▶️ at its base to climb to the top, walk the jib for a view of the city, and return to the mast to climb down.
 Police response and troublemaker NPCs are minimal.
 Car Stealer is a no-consequences parallel universe: it never touches your save, and stolen cars simply stay where you leave them.
 The game is intended for players 18 and over (see Settings → Terms).
