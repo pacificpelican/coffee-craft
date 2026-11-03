@@ -431,8 +431,21 @@ const OFFLINE_SUS = [
   'I am watching you. I am literally watching you right now.', 'Nobody asked you. Nobody asks you anything. Keep walking.', 'Have we met? We haven\u2019t. Why do you know my name?', 'Those are some… shifty keys you are not holding.',
   'Hmm. Hands where I can see them. Also, hi.', 'I know what a person who steals cars looks like. You look exactly like that.',
 ];
+const ANIMAL_TALK = {
+  pigeon: ['Do you have bread? Even a thought of bread? I will take a thought of bread.', 'I have been standing here for six hours and I regret none of it.', 'You can understand me?! Finally. Okay. Listen. Crumbs. Please.'],
+  gull: ['MINE. Whatever you are holding. Mine. I am joking. Mostly.', 'I am a seagull. I have seen things you would not believe, mostly fries.', 'The tide is in, the fries are out, and I am furious about both.'],
+  raccoon: ['This crust? Found it. Fair and square. Mostly square.', 'I am not stealing, I am reallocating. Do you want half?', 'Nobody ever talks to me. They just yell and clap. This is nice.'],
+  pelican: ['I have been judging the harbor for forty years. You seem fine.', 'Observe my pouch. It is a lot of pouch. I am proud of it.', 'Fish come and go. Dignity, however, is forever.'],
+  deer: ['Oh! Sorry. I was just standing very politely.', 'The grass here is a seven out of ten. The rain is a ten out of ten.', 'Please do not make any sudden movements. I love you, but please.'],
+  dog: ['YOU CAN TALK TO ME?! I LOVE YOU. WHO IS A GOOD PERSON? YOU ARE.', 'Squirrel. Sorry. Squirrel. I am listening. Squirrel.', 'Hello! Do you have snacks? Are you a snack? You are not a snack. I love you anyway.'],
+};
 async function npcReply(n, msgs, ctx = 'street') {
   const p = n.persona;
+  if (n.isAnimal && trippingNow()) {
+    const ai = await aiText(`You are ${p.name}, in a cozy rainy city game. The player ate a magic mushroom and can suddenly understand you in plain English. Speak as this animal would: its real preoccupations (food, territory, weather), funny and warm, never rude or dark. Reply in 1-2 short sentences, no stage directions.`, msgs.slice(-8));
+    n.aiReply = !!ai;
+    return ai ? ai.replace(/\s+/g, ' ').slice(0, 300) : pick(ANIMAL_TALK[n.kind] || ANIMAL_TALK.dog);
+  }
   if (n.isAnimal) return n.kind === 'raccoon' ? '*chitters, clutching a pizza crust*' : n.kind === 'deer' ? '*flicks an ear, watching you with huge dark eyes*' : n.kind === 'dog' ? '*wags enthusiastically*' : n.kind === 'pelican' ? '*regards you with ancient pelican dignity, bill pouch sagging*' : '*coos and eyes your pockets*';
   if (cs) {
     const ai = await aiText(`You are ${p.name}, ${p.occupation}, in a darkly comic parallel-universe version of a rainy city neighborhood where the player is a shifty guy who steals parked cars (no real consequences). You are VERY suspicious of him: wary, paranoid, accusatory but funny, never violent or threatening. Reply in 1-2 short sentences, in character, no stage directions.`, msgs.slice(-8));
@@ -670,6 +683,39 @@ function enterCellar() {
     h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
 }
 
+// Mushroom Therapy Center behind Night Owl Market: functional mushrooms, and magic ones that let you understand animals for a while.
+const MUSH = { id: 'mushrooms', name: 'Mushroom Therapy Center', type: 'wellness', owner: 'public' };
+const MUSH_MENU = [
+  ['Lion\u2019s Mane Focus Tincture', 18, 'mush_fn', 'Functional. Sharpens the mind: a clear-headed hour that earns a few extra points.', 'focus'],
+  ['Reishi Calm Tea', 14, 'mush_fn', 'Functional. Earthy, soothing, faintly like a forest floor. Eases police scrutiny a touch.', 'calm'],
+  ['Cordyceps Morning Capsules', 16, 'mush_fn', 'Functional. A steady lift, no jitters, no regrets.', 'energy'],
+  ['Magic Mushroom Cap', 45, 'mush_magic', 'The real thing. For about 90 minutes the pigeons, gulls, raccoons and dogs will speak plain English to you. Colors get a little wiggly.', 'magic'],
+  ['Magic Mushroom Chocolate', 30, 'mush_magic', 'A gentler square of the same magic: about 45 minutes of understanding animals.', 'magic_lite'],
+];
+const trippingNow = () => state.buzzed?.type === 'shroom' && state.minutes < state.buzzed.until;
+function enterMushroom() {
+  sfx('door');
+  const hour = Math.floor(state.minutes / 60) % 24;
+  if (hour >= 3 && hour < 11) { closeModal(); return notify('The Mushroom Therapy Center is shuttered. Open 11:00\u201303:00.', { sound: false }); }
+  const take = (it) => {
+    if (state.bank.cash < it[1]) return notify('Not enough funds.');
+    buyItem(MUSH, it);
+    const fx = it[4];
+    if (fx === 'focus') { state.points += 3; notify('\ud83e\udde0 Your thoughts feel tidy and bright. +3 points.', { sound: false }); }
+    else if (fx === 'calm') { state.scrutiny = Math.max(0, state.scrutiny - 3); notify('\ud83c\udf75 Calm settles over you. Police scrutiny eases.', { sound: false }); }
+    else if (fx === 'energy') { notify('\u26a1 A clean, steady energy hums through you.', { sound: false }); }
+    else { state.buzzed = { type: 'shroom', until: state.minutes + (fx === 'magic' ? 90 : 45) }; notify('\ud83c\udf44 The edges of everything go soft and shimmery\u2026 try talking to an animal.', { sound: false, ms: 5000 }); }
+    purchased(it[0], it[1], enterMushroom);
+  };
+  const show = (it) => openModal((m) => m.append(h('h3', {}, it[0]), itemImg(it[0], it[2], { style: 'width:100%;max-height:240px;object-fit:contain;background:#fff;border-radius:12px' }), h('p', {}, it[3]),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => take(it) }, `\ud83d\udc4d Buy ${money(it[1])}`), h('button', { class: 'btn warn', onclick: enterMushroom }, '\u26d4 Back'))));
+  openModal((c) => c.append(h('h3', {}, '\ud83c\udf44 Mushroom Therapy Center'),
+    h('p', { class: 'small' }, 'A back-alley door, a bead of green lantern light, and inside: terrariums, soft lamps and a practitioner in a cardigan who whispers. \u201cFunctional on the left shelf. Magic on the right. Please don\u2019t operate a robot taxi.\u201d'),
+    trippingNow() ? h('p', { class: 'small' }, '\ud83c\udf44 You are currently tuned in to animal speech.') : '',
+    h('div', { class: 'menu-items' }, ...MUSH_MENU.map((it) => h('div', { class: 'menu-item', onclick: () => show(it) }, itemImg(it[0], it[2], { alt: '' }), h('b', {}, it[0]), h('div', {}, money(it[1]))))),
+    h('div', { class: 'row' }, h('button', { class: 'btn warn', onclick: closeModal }, 'Leave'))));
+}
+
 // Comedy club behind Fir Street Apartments: bland built-in bits, or an original AI-written set when AI is on.
 const COMICS = ['Marty Pemberton', 'Dolores Quill', 'Big Tran', 'Hazel Okonkwo-Reyes', 'Lenny Fisk', 'Priya Dunmore'];
 const BLAND_BITS = [
@@ -718,6 +764,7 @@ function enterVenue(d) {
   if (d.special === 'home') return enterHome();
   if (d.special === 'cellar') return enterCellar();
   if (d.special === 'comedy') return enterComedy();
+  if (d.special === 'mushroom') return enterMushroom();
   const def = defOf(d.bizId) || {};
   // Civic venues (library, bank, station…) aren't economy businesses; show them with a stand-in record.
   const b = state.businesses[d.bizId] || (def.id ? { id: def.id, name: def.name, type: def.type, owner: 'public', state: 'open', reputation: 0, buzz: 0, bank: def.bank } : null);
@@ -811,8 +858,8 @@ function frame() {
   if (!paused) { tick(dt); } else input.edge = {};
   const mood = state.buzzed && state.minutes < state.buzzed.until ? state.buzzed.type : null;
   if (!mood) state.buzzed = null;
-  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : mood === 'mild' ? 'hue-rotate(15deg) saturate(1.2)' : cs ? 'sepia(.45) saturate(1.4) hue-rotate(-20deg) contrast(1.08)' : '';
-  if (mood && mood !== 'good' && mood !== 'mild') { shake = Math.sin(t * 2) * 0.6; }
+  const cv = $('#game'); cv.style.filter = mood === 'good' ? 'hue-rotate(40deg) saturate(1.6)' : mood === 'shroom' ? `hue-rotate(${Math.round(Math.sin(t * 0.6) * 50)}deg) saturate(1.8)` : mood === 'mild' ? 'hue-rotate(15deg) saturate(1.2)' : cs ? 'sepia(.45) saturate(1.4) hue-rotate(-20deg) contrast(1.08)' : '';
+  if (mood && mood !== 'good' && mood !== 'mild' && mood !== 'shroom') { shake = Math.sin(t * 2) * 0.6; }
   renderer.render(scene, camera);
 }
 
@@ -861,7 +908,7 @@ function collide(x, z, y, r) {
 
 function movePlayer(dt) {
   const mv = readMove();
-  const wob = state.buzzed && state.minutes < state.buzzed.until && state.buzzed.type !== 'good' && state.buzzed.type !== 'mild';
+  const wob = state.buzzed && state.minutes < state.buzzed.until && state.buzzed.type !== 'good' && state.buzzed.type !== 'mild' && state.buzzed.type !== 'shroom';
   if (player.eating > 0) player.eating -= dt;
   if (player.ride === 'tram') {
     const p = tramSys.tram.pos; player.x = p.x; player.z = p.z; player.y = 0.9; player.speed = 0;

@@ -89,6 +89,8 @@ Content is data-driven: add a JSON file to `data/mods/` and list it in `data/mod
 
 Venue interiors are modal screens, not walkable 3D rooms.
 The fight mini-game is only played as sparring at the Cedar Crane Dojo (the alley door behind Eastgate Apartments, open 6:00–23:00, $40 per bout, belts rise with wins); random street fights don't exist.
+
+The alley behind Night Owl Market hides the Mushroom Therapy Center (open 11:00–03:00): functional mushroom products with small perks, and magic mushrooms that let you understand animals in plain English for a while.
 Police response and troublemaker NPCs are minimal.
 Car Stealer is a no-consequences parallel universe: it never touches your save, and stolen cars simply stay where you leave them.
 The game is intended for players 18 and over (see Settings → Terms).

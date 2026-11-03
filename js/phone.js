@@ -51,8 +51,39 @@ export function createPhone(G) {
           h('button', { class: 'ph-live' + (live ? ' on' : ''), title: live ? 'Pause the world while the phone is open' : 'Let the world keep running while the phone is open', 'aria-label': live ? 'Pause the world' : 'Run the world', 'aria-pressed': String(live), onclick: toggleLive }, live ? '⏸' : '▶'),
           h('button', { class: 'ph-x', title: 'Close phone', 'aria-label': 'Close phone', onclick: close }, '✕ Close'))),
       screen,
-      h('button', { class: 'home', title: 'Close phone', onclick: close }),
+      h('div', { class: 'ph-foot' },
+        h('button', { class: 'home', title: 'Close phone', onclick: close }),
+        h('button', { class: 'ph-shot', title: 'Save a screenshot of the phone', 'aria-label': 'Save phone screenshot', onclick: shootPhone }, '▫')),
     );
+  }
+
+  // Screenshot of the phone: the live DOM is cloned with computed styles inlined, drawn through an SVG foreignObject, then stamped with the same credit line as the game screenshot.
+  async function shootPhone() {
+    try {
+      const src = root, rect = src.getBoundingClientRect(), W = Math.ceil(rect.width), Hh = Math.ceil(rect.height);
+      const clone = src.cloneNode(true);
+      const srcEls = [src, ...src.querySelectorAll('*')], dstEls = [clone, ...clone.querySelectorAll('*')];
+      srcEls.forEach((el, i) => {
+        const d = dstEls[i], cs = getComputedStyle(el);
+        if (el.tagName === 'CANVAS') { const im = document.createElement('img'); try { im.src = el.toDataURL(); } catch (e) { /* tainted canvas: leave blank */ } im.style.cssText = `width:${el.clientWidth}px;height:${el.clientHeight}px`; d.replaceWith(im); return; }
+        let css = ''; for (const p of cs) css += `${p}:${cs.getPropertyValue(p)};`;
+        d.setAttribute('style', css);
+        if (el.scrollTop && d.firstElementChild) d.firstElementChild.style.marginTop = `-${el.scrollTop}px`;
+      });
+      clone.setAttribute('style', clone.getAttribute('style') + `;position:static;width:${W}px;height:${Hh}px;animation:none;margin:0;`);
+      const xml = new XMLSerializer().serializeToString(clone);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hh}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">${xml}</div></foreignObject></svg>`;
+      const img = new Image();
+      await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+      const k = 2, bar = 34, c = document.createElement('canvas'); c.width = W * k; c.height = Hh * k + bar;
+      const g = c.getContext('2d');
+      g.fillStyle = '#23291f'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, W * k, Hh * k);
+      g.fillStyle = '#efe6cc'; g.font = `${Math.max(11, Math.round(c.width / 36))}px Georgia, serif`; g.textBaseline = 'middle';
+      g.fillText(`Coffee Craft by Daniel McKeown https://altaredwood.work — ${new Date().toLocaleString()}`, 8, Hh * k + bar / 2);
+      const a = document.createElement('a'); a.download = `Coffee_Craft_Phone_${new Date().toISOString().replace(/[:.]/g, '-')}.png`; a.href = c.toDataURL('image/png'); a.click();
+      G.notify('📸 Phone screenshot saved.', { sound: false, ms: 2000 });
+    } catch (e) { G.notify('Could not capture the phone screen.', { sound: false, ms: 2500 }); }
   }
 
   // E-book reader: public-domain excerpts, split into screens of about 900 characters; the page you reach is remembered.

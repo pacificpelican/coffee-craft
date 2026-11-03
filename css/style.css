@@ -88,6 +88,9 @@ button:disabled { opacity:.5; }
 #phone .ph-live:hover, #phone .ph-live.on { opacity:1; background:#3a4238; color:#fff; }
 #phone .ph-live.on { border-color:#8fbf6a; }
 #phone .home { align-self:center; margin-top:8px; width:90px; height:8px; border-radius:6px; background:#555; border:0; }
+#phone .ph-foot { position:relative; display:flex; justify-content:center; align-items:center; }
+#phone .ph-shot { position:absolute; right:14px; bottom:-4px; width:16px; height:16px; border-radius:4px; border:1px solid #444; background:#3a3d3a; color:#777; font-size:8px; line-height:1; padding:0; opacity:.45; cursor:pointer; }
+#phone .ph-shot:hover { opacity:1; background:#555; }
 .apps { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:10px 4px; }
 .app { background:#fff; border:2px solid var(--ink); border-radius:16px; padding:10px 2px; text-align:center; font-size:12px; cursor:pointer; }
 .app span { display:block; font-size:30px; }

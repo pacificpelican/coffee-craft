@@ -75,7 +75,8 @@
     {"id":"kglaze","name":"K-Glaze Donuts","type":"donut","style":"donut","block":[2,2],"slot":"N1","color":"#c99a2e","quality":63,"base":30,
       "menu":[["Black Sesame Doughnut",4,"donut","Nutty, grey and glossy."],["Yuzu Glaze Ring",4,"donut","Bright citrus."]]},
     {"id":"mart24","name":"Night Owl Market","type":"convenience","block":[2,2],"slot":"S0","color":"#4f7a96","quality":52,"base":34,
-      "items":[["Instant Noodles",3],["Hot Coffee Can",3],["Gum",2]]},
+          "items":[["Instant Noodles",3],["Hot Coffee Can",3],["Gum",2]],
+          "backDoor":{"id":"mushrooms","name":"Mushroom Therapy Center","special":"mushroom","x":-6.5,"sub":"functional · magic mushrooms","signBg":"#2f4a2a","doorColor":"#6b3f8a","lantern":"#9be86a"}},
     {"id":"drug2","name":"Rain City Pharmacy","type":"drug","block":[2,2],"slot":"S1","color":"#7a8f5e","quality":57,"base":28,
       "items":[["Allergy Tabs",9],["Lip Balm",4],["Moisturizer",11]]},
 
